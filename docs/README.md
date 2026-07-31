@@ -20,7 +20,8 @@ Then open <http://localhost:8000>.
 4. Select the target branch and the **/docs** folder.
 5. Save. GitHub will publish **docs/index.html**.
 
-The page is framework-free and requires no build step. Math formulas use
-MathJax from jsDelivr; all layout and the policy-triangle figure are embedded
-in **index.html**.
-
+The page is framework-free and requires no build step. It presents the full
+technical note rather than a promotional landing page. Math formulas use
+MathJax from jsDelivr; the restrained layout and SVG policy triangle are
+embedded in **index.html**. The PDF and LaTeX source archive are also included
+for direct download.

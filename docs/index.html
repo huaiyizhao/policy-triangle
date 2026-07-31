@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f5f2ea">
-  <meta name="description" content="The Policy Triangle is a compact taxonomy for understanding behavior, proximal, and current policy mismatch in large-language-model reinforcement learning.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="The Policy Triangle: a technical taxonomy of behavior, proximal, and current policy mismatch in LLM reinforcement learning.">
+  <link rel="canonical" href="https://huaiyizhao.github.io/policy-triangle/">
   <meta property="og:type" content="article">
   <meta property="og:title" content="The Policy Triangle">
-  <meta property="og:description" content="A visual taxonomy of policy mismatch, rollout correction, and update shaping in LLM reinforcement learning.">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:description" content="A technical taxonomy of policy mismatch in LLM reinforcement learning.">
+  <meta property="og:url" content="https://huaiyizhao.github.io/policy-triangle/">
   <title>The Policy Triangle — Huaiyi Zhao</title>
 
   <script>
@@ -18,1591 +18,1269 @@
         inlineMath: [['\\(', '\\)']],
         displayMath: [['\\[', '\\]']]
       },
-      chtml: { scale: 0.95 }
+      chtml: { scale: 0.96 }
     };
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
   <style>
     :root {
-      --paper: #f5f2ea;
-      --surface: #fffdf8;
-      --surface-2: #ece8de;
-      --ink: #172132;
-      --ink-soft: #4f5b6b;
-      --line: #d6d0c4;
-      --blue: #347db8;
-      --blue-soft: #e9f3fa;
-      --orange: #d87912;
-      --orange-soft: #fff2df;
-      --green: #238b62;
-      --green-soft: #e6f5ee;
-      --purple: #7651ae;
-      --purple-soft: #f0ebf8;
-      --red: #b44945;
-      --red-soft: #fbedeb;
-      --shadow: 0 24px 70px rgba(41, 47, 57, 0.08);
-      --radius: 22px;
-      --content: 740px;
-      --wide: 1120px;
+      --ink: #17202a;
+      --muted: #59636e;
+      --faint: #7b858f;
+      --line: #d8dde2;
+      --line-dark: #aeb6bf;
+      --panel: #f6f8fa;
+      --blue: #2878ad;
+      --orange: #c66d0a;
+      --green: #19845d;
+      --purple: #6947a4;
+      --red: #a53f3f;
+      --content: 850px;
+      --layout: 1120px;
     }
 
     * { box-sizing: border-box; }
 
     html {
       scroll-behavior: smooth;
-      scroll-padding-top: 88px;
+      scroll-padding-top: 76px;
     }
 
     body {
       margin: 0;
       color: var(--ink);
-      background:
-        radial-gradient(circle at 8% 5%, rgba(52, 125, 184, 0.10), transparent 24rem),
-        radial-gradient(circle at 92% 18%, rgba(216, 121, 18, 0.09), transparent 22rem),
-        var(--paper);
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 17px;
-      line-height: 1.72;
+      background: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.68;
       text-rendering: optimizeLegibility;
     }
 
     a {
-      color: inherit;
-      text-decoration-color: rgba(23, 33, 50, 0.35);
-      text-underline-offset: 0.18em;
-      transition: color 160ms ease, text-decoration-color 160ms ease;
+      color: #12649a;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.17em;
     }
 
-    a:hover {
-      color: var(--blue);
-      text-decoration-color: var(--blue);
-    }
+    a:hover { color: #083f67; }
 
     :focus-visible {
-      outline: 3px solid rgba(52, 125, 184, 0.45);
-      outline-offset: 4px;
-      border-radius: 4px;
+      outline: 2px solid var(--blue);
+      outline-offset: 3px;
     }
 
-    .skip-link {
+    code,
+    pre,
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .skip {
       position: absolute;
       left: 1rem;
-      top: -5rem;
-      z-index: 100;
-      padding: 0.7rem 1rem;
-      border-radius: 0 0 10px 10px;
+      top: -4rem;
+      padding: 0.5rem 0.75rem;
       color: white;
       background: var(--ink);
+      z-index: 100;
     }
 
-    .skip-link:focus { top: 0; }
+    .skip:focus { top: 0; }
 
-    .site-header {
+    .topbar {
       position: sticky;
       top: 0;
-      z-index: 20;
-      border-bottom: 1px solid rgba(214, 208, 196, 0.72);
-      background: rgba(245, 242, 234, 0.86);
-      backdrop-filter: blur(18px);
+      z-index: 30;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
     }
 
-    .nav {
-      width: min(calc(100% - 2rem), var(--wide));
-      min-height: 68px;
+    .topbar-inner {
+      width: min(calc(100% - 2rem), var(--layout));
+      min-height: 60px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 2rem;
+      gap: 1rem;
     }
 
-    .brand {
-      display: inline-flex;
+    .site-title {
+      color: var(--ink);
+      font-weight: 700;
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    .top-links {
+      display: flex;
       align-items: center;
-      gap: 0.7rem;
-      font-weight: 760;
-      letter-spacing: -0.02em;
+      gap: 1.1rem;
+      font-size: 0.84rem;
+    }
+
+    .top-links a { text-decoration: none; }
+
+    .top-links .download {
+      padding: 0.35rem 0.62rem;
+      border: 1px solid var(--line-dark);
+      border-radius: 4px;
+      color: var(--ink);
+    }
+
+    .page {
+      width: min(calc(100% - 2rem), var(--layout));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 210px minmax(0, var(--content));
+      justify-content: space-between;
+      gap: 3.5rem;
+    }
+
+    .toc {
+      align-self: start;
+      position: sticky;
+      top: 86px;
+      padding-top: 3.7rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 0.65rem;
+      color: var(--ink);
+      font-size: 0.69rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .toc ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .toc li { margin: 0.42rem 0; }
+
+    .toc a {
+      color: var(--muted);
       text-decoration: none;
     }
 
-    .brand-mark {
-      position: relative;
-      width: 27px;
-      height: 24px;
-      display: inline-block;
+    .toc a:hover { color: var(--ink); }
+
+    .toc-meta {
+      margin-top: 1.5rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--line);
+      color: var(--faint);
     }
 
-    .brand-mark::before {
-      content: "";
-      position: absolute;
-      inset: 2px 2px 0;
-      clip-path: polygon(50% 0, 100% 100%, 0 100%);
-      background: linear-gradient(135deg, var(--green) 0 33%, var(--orange) 33% 65%, var(--blue) 65%);
+    article {
+      min-width: 0;
+      padding: 4rem 0 7rem;
     }
 
-    .brand-mark::after {
-      content: "";
-      position: absolute;
-      inset: 6px 7px 5px;
-      clip-path: polygon(50% 0, 100% 100%, 0 100%);
-      background: var(--paper);
+    .paper-header {
+      padding-bottom: 2.4rem;
+      border-bottom: 1px solid var(--line-dark);
     }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 1.4rem;
-      color: var(--ink-soft);
-      font-size: 0.88rem;
-      font-weight: 650;
-    }
-
-    .nav-links a { text-decoration: none; }
-
-    .nav-links .paper-link {
-      padding: 0.55rem 0.86rem;
-      border: 1px solid var(--ink);
-      border-radius: 999px;
-      color: var(--ink);
-      background: rgba(255, 253, 248, 0.55);
-    }
-
-    main { overflow: hidden; }
-
-    .hero {
-      width: min(calc(100% - 2rem), var(--wide));
-      min-height: 690px;
-      margin: 0 auto;
-      padding: 7.4rem 0 5rem;
-      display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(290px, 0.75fr);
-      align-items: center;
-      gap: clamp(2rem, 6vw, 6rem);
-    }
-
-    .eyebrow,
-    .section-kicker {
-      margin: 0 0 1.2rem;
-      color: var(--ink-soft);
-      font-size: 0.74rem;
-      font-weight: 800;
-      letter-spacing: 0.16em;
+    .status {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
       text-transform: uppercase;
     }
 
     h1,
     h2,
-    h3 {
+    h3,
+    h4 {
       margin: 0;
-      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-      letter-spacing: -0.035em;
-      line-height: 1.05;
-    }
-
-    h1 {
-      max-width: 850px;
-      font-size: clamp(3.7rem, 8.4vw, 7.2rem);
-      font-weight: 560;
-    }
-
-    h1 span {
-      display: block;
-      margin-top: 0.3rem;
-      color: var(--ink-soft);
-      font-size: 0.31em;
+      color: var(--ink);
       line-height: 1.25;
       letter-spacing: -0.018em;
     }
 
-    .hero-dek {
-      max-width: 650px;
-      margin: 2rem 0 0;
-      color: var(--ink-soft);
-      font-size: clamp(1.05rem, 2vw, 1.26rem);
-      line-height: 1.65;
+    h1 {
+      max-width: 780px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.35rem, 5vw, 3.55rem);
+      font-weight: 500;
     }
 
-    .hero-meta {
-      margin: 1.6rem 0 0;
+    .subtitle {
+      display: block;
+      margin-top: 0.5rem;
+      color: var(--muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.42em;
+      font-weight: 500;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+
+    .author-line {
+      margin: 1.5rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .author-line strong { color: var(--ink); }
+
+    .paper-actions {
+      margin-top: 1.25rem;
       display: flex;
-      align-items: center;
       flex-wrap: wrap;
-      gap: 0.55rem 1rem;
-      color: var(--ink-soft);
-      font-size: 0.86rem;
+      gap: 0.65rem 1.2rem;
+      font-size: 0.84rem;
     }
 
-    .hero-meta strong { color: var(--ink); }
+    .paper-actions a { font-weight: 600; }
 
-    .hero-actions {
-      margin-top: 2.2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.8rem;
+    .abstract {
+      margin: 2.5rem 0 0;
+      padding: 1.25rem 1.35rem;
+      border-left: 3px solid var(--line-dark);
+      background: var(--panel);
     }
 
-    .button {
-      min-height: 47px;
-      padding: 0.72rem 1.15rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      border: 1px solid var(--ink);
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 760;
-      text-decoration: none;
-    }
-
-    .button.primary {
-      color: white;
-      background: var(--ink);
-    }
-
-    .button.secondary { background: rgba(255, 253, 248, 0.62); }
-
-    .hero-card {
-      position: relative;
-      padding: 1.25rem;
-      border: 1px solid rgba(214, 208, 196, 0.85);
-      border-radius: 30px;
-      background: rgba(255, 253, 248, 0.75);
-      box-shadow: var(--shadow);
-      transform: rotate(1.3deg);
-    }
-
-    .hero-card::before {
-      content: "";
-      position: absolute;
-      inset: 12px;
-      z-index: -1;
-      border: 1px dashed rgba(79, 91, 107, 0.22);
-      border-radius: 22px;
-    }
-
-    .metric {
-      padding: 1.3rem 1.35rem;
-      display: grid;
-      grid-template-columns: 58px 1fr;
-      align-items: center;
-      gap: 1rem;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .metric:last-child { border-bottom: 0; }
-
-    .metric-number {
-      font-family: "Iowan Old Style", Georgia, serif;
-      font-size: 2.8rem;
-      line-height: 1;
-    }
-
-    .metric:nth-child(1) .metric-number { color: var(--green); }
-    .metric:nth-child(2) .metric-number { color: var(--blue); }
-    .metric:nth-child(3) .metric-number { color: var(--purple); }
-
-    .metric-label {
-      color: var(--ink-soft);
-      font-size: 0.8rem;
-      font-weight: 800;
-      letter-spacing: 0.11em;
+    .abstract h2 {
+      margin-bottom: 0.55rem;
+      font-family: inherit;
+      font-size: 0.77rem;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .lede-band {
-      border-block: 1px solid var(--line);
-      background: rgba(255, 253, 248, 0.52);
-    }
-
-    .lede {
-      width: min(calc(100% - 2rem), var(--content));
-      margin: 0 auto;
-      padding: 5.5rem 0;
-    }
-
-    .lede p {
+    .abstract p {
       margin: 0;
-      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-      font-size: clamp(1.65rem, 3.2vw, 2.5rem);
-      line-height: 1.34;
-      letter-spacing: -0.025em;
+      color: #35404a;
+      font-size: 0.94rem;
     }
 
-    .lede em {
-      color: var(--green);
-      font-style: normal;
+    section {
+      padding-top: 4rem;
     }
 
-    .article-section {
-      width: min(calc(100% - 2rem), var(--content));
-      margin: 0 auto;
-      padding: 6.5rem 0 0;
+    section > h2 {
+      margin-bottom: 1.15rem;
+      padding-bottom: 0.55rem;
+      border-bottom: 1px solid var(--line);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.9rem;
+      font-weight: 500;
     }
 
-    .article-section > h2 {
-      margin-bottom: 1.5rem;
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      font-weight: 560;
+    section > h3 {
+      margin: 2.5rem 0 0.7rem;
+      font-size: 1.16rem;
+      font-weight: 700;
     }
 
-    .article-section > h3 {
-      margin: 3rem 0 1rem;
-      font-size: clamp(1.6rem, 3vw, 2.1rem);
-      font-weight: 600;
+    section > h4 {
+      margin: 1.9rem 0 0.4rem;
+      font-size: 0.98rem;
+      font-weight: 700;
     }
 
-    .article-section p {
-      margin: 1.2rem 0 0;
-      color: var(--ink-soft);
+    p { margin: 0.9rem 0 0; }
+
+    .equation {
+      margin: 1.35rem 0;
+      padding: 0.7rem 1rem;
+      overflow-x: auto;
+      border-block: 1px solid var(--line);
+      text-align: center;
     }
 
-    .article-section p strong { color: var(--ink); }
-
-    .wide-block {
-      width: min(calc(100% - 2rem), var(--wide));
-      margin: 4.4rem auto 0;
-    }
-
-    .triangle-panel {
-      position: relative;
-      padding: clamp(1rem, 4vw, 3.5rem);
-      overflow: hidden;
+    .definition-grid {
+      margin: 1.4rem 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       border: 1px solid var(--line);
-      border-radius: 34px;
-      background:
-        linear-gradient(rgba(23, 33, 50, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(23, 33, 50, 0.035) 1px, transparent 1px),
-        var(--surface);
-      background-size: 34px 34px;
-      box-shadow: var(--shadow);
     }
 
-    .triangle-panel::after {
-      content: "E = BU";
-      position: absolute;
-      right: 1.4rem;
-      top: 1rem;
-      color: rgba(23, 33, 50, 0.06);
-      font-family: "Iowan Old Style", Georgia, serif;
-      font-size: clamp(4rem, 11vw, 8rem);
-      line-height: 1;
-      pointer-events: none;
+    .definition-grid > div {
+      padding: 0.85rem 1rem;
+      border-right: 1px solid var(--line);
     }
 
-    .triangle-svg {
-      position: relative;
-      z-index: 1;
+    .definition-grid > div:last-child { border-right: 0; }
+
+    .definition-grid strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      font-size: 0.92rem;
+    }
+
+    .definition-grid span {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .edge-b strong { color: var(--blue); }
+    .edge-u strong { color: var(--orange); }
+    .edge-e strong { color: var(--green); }
+
+    figure {
+      margin: 2.1rem 0;
+      padding: 1.2rem;
+      border: 1px solid var(--line);
+    }
+
+    figure svg {
       width: 100%;
       height: auto;
       display: block;
     }
 
-    .figure-caption {
-      margin: 1.4rem auto 0;
-      max-width: 820px;
-      color: var(--ink-soft);
-      font-size: 0.86rem;
-      text-align: center;
-    }
-
-    .equation-strip {
-      margin-top: 2.2rem;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      overflow: hidden;
-      background: var(--surface);
-    }
-
-    .equation-item {
-      padding: 1.35rem 1.1rem 1.25rem;
-      text-align: center;
-      border-right: 1px solid var(--line);
-    }
-
-    .equation-item:last-child { border-right: 0; }
-
-    .equation-item strong {
-      display: block;
-      margin-bottom: 0.35rem;
-      font-size: 1.08rem;
-    }
-
-    .equation-item span {
-      color: var(--ink-soft);
+    figcaption {
+      margin-top: 0.8rem;
+      color: var(--muted);
       font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .equation-item.behavior strong { color: var(--blue); }
-    .equation-item.update strong { color: var(--orange); }
-    .equation-item.total strong { color: var(--green); }
-
-    .operator-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-
-    .operator {
-      min-height: 275px;
-      padding: 1.6rem;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-
-    .operator-icon {
-      width: 44px;
-      height: 44px;
-      margin-bottom: 2rem;
-      display: grid;
-      place-items: center;
-      border-radius: 12px;
-      font-weight: 850;
-    }
-
-    .operator.mask .operator-icon {
-      color: var(--blue);
-      background: var(--blue-soft);
-    }
-
-    .operator.weight .operator-icon {
-      color: var(--orange);
-      background: var(--orange-soft);
-    }
-
-    .operator.shape .operator-icon {
-      color: var(--purple);
-      background: var(--purple-soft);
-    }
-
-    .operator h3 {
-      font-family: inherit;
-      font-size: 1.06rem;
-      font-weight: 820;
-      letter-spacing: -0.015em;
-    }
-
-    .operator p {
-      margin: 0.7rem 0 0;
-      color: var(--ink-soft);
-      font-size: 0.92rem;
-      line-height: 1.6;
-    }
-
-    .tag {
-      margin-top: 1.3rem;
-      padding: 0.38rem 0.58rem;
-      display: inline-flex;
-      border: 1px solid currentColor;
-      border-radius: 999px;
-      color: var(--ink-soft);
-      font-size: 0.66rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .callout {
-      margin-top: 2.4rem;
-      padding: 1.5rem 1.6rem;
-      border-left: 4px solid var(--green);
-      border-radius: 0 var(--radius) var(--radius) 0;
-      background: var(--green-soft);
-    }
-
-    .callout p {
-      margin: 0;
-      color: #2d5848;
-    }
-
-    .callout strong { color: #174c38; }
-
-    .mode-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .mode {
-      padding: 1.7rem;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-
-    .mode h3 {
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      font-family: inherit;
-      font-size: 1.08rem;
-      font-weight: 820;
-      letter-spacing: -0.01em;
-    }
-
-    .mode-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-    }
-
-    .mode.bypass .mode-dot { background: var(--green); }
-    .mode.decoupled .mode-dot { background: linear-gradient(90deg, var(--blue), var(--orange)); }
-
-    .mode p {
-      margin: 0.8rem 0 0;
-      color: var(--ink-soft);
-      font-size: 0.92rem;
-    }
-
-    .mode-equation {
-      margin-top: 1.25rem;
-      padding: 0.85rem;
-      border-radius: 12px;
-      background: var(--surface-2);
-      text-align: center;
-      font-weight: 750;
-    }
-
-    .accounting-rule {
-      padding: clamp(1.6rem, 4vw, 3rem);
-      border: 1px solid var(--line);
-      border-radius: 30px;
-      background: var(--ink);
-      color: white;
-    }
-
-    .accounting-rule .section-kicker { color: rgba(255, 255, 255, 0.58); }
-
-    .accounting-rule h2 {
-      max-width: 760px;
-      color: white;
-      font-size: clamp(2.25rem, 5vw, 4.3rem);
-      font-weight: 540;
-    }
-
-    .accounting-rule > p {
-      max-width: 760px;
-      color: rgba(255, 255, 255, 0.68);
-    }
-
-    .example-grid {
-      margin-top: 2.4rem;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .example {
-      padding: 1.35rem 1.45rem;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .example-label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.68rem;
-      font-weight: 850;
-      letter-spacing: 0.11em;
-      text-transform: uppercase;
-    }
-
-    .example.good .example-label { color: #7ee0b9; }
-    .example.bad .example-label { color: #f0a29d; }
-
-    .example-equation {
-      margin-top: 0.65rem;
-      font-size: 1.04rem;
-    }
-
-    .example small {
-      display: block;
-      margin-top: 0.55rem;
-      color: rgba(255, 255, 255, 0.6);
       line-height: 1.5;
+      text-align: center;
+    }
+
+    .note {
+      margin: 1.4rem 0;
+      padding: 1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-left-width: 4px;
+      background: #fbfcfd;
+    }
+
+    .note.accounting { border-left-color: var(--green); }
+    .note.scope { border-left-color: var(--purple); }
+    .note.warning { border-left-color: var(--orange); }
+
+    .note strong {
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .note p {
+      margin: 0;
+      color: #3e4954;
+      font-size: 0.91rem;
     }
 
     .table-wrap {
+      margin: 1.4rem 0;
       overflow-x: auto;
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow);
     }
 
     table {
       width: 100%;
-      min-width: 850px;
       border-collapse: collapse;
-      font-size: 0.86rem;
-      line-height: 1.5;
+      font-size: 0.82rem;
+      line-height: 1.45;
     }
 
     th,
     td {
-      padding: 1rem 1.1rem;
+      padding: 0.68rem 0.75rem;
+      border-right: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
       text-align: left;
       vertical-align: top;
     }
 
+    th:last-child,
+    td:last-child { border-right: 0; }
+
+    tbody tr:last-child td { border-bottom: 0; }
+
     th {
-      color: var(--ink-soft);
-      background: var(--surface-2);
-      font-size: 0.67rem;
-      font-weight: 850;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    tr:last-child td { border-bottom: 0; }
-    td:first-child { font-weight: 770; }
-    td:nth-child(2) { white-space: nowrap; }
-
-    .edge-pill {
-      padding: 0.24rem 0.48rem;
-      display: inline-block;
-      border-radius: 999px;
+      color: #303942;
+      background: var(--panel);
       font-size: 0.72rem;
-      font-weight: 780;
+      font-weight: 700;
     }
 
-    .edge-pill.direct {
-      color: #1f654a;
-      background: var(--green-soft);
+    td:first-child { font-weight: 650; }
+
+    .op-mask { color: var(--blue); }
+    .op-weight { color: var(--orange); }
+    .op-shape { color: var(--purple); }
+
+    .operator-table td:first-child {
+      width: 17%;
+      white-space: nowrap;
     }
 
-    .edge-pill.factorized {
-      color: #72500f;
-      background: var(--orange-soft);
+    .method-table {
+      min-width: 800px;
     }
 
-    .insight-list {
-      margin: 2.5rem 0 0;
-      padding: 0;
-      list-style: none;
-      counter-reset: insight;
+    .method-table td:nth-child(1) { width: 22%; }
+    .method-table td:nth-child(2) { width: 13%; white-space: nowrap; }
+    .method-table td:nth-child(3) { width: 24%; }
+
+    .checks,
+    .hypotheses {
+      margin: 1.1rem 0 0;
+      padding-left: 1.35rem;
     }
 
-    .insight-list li {
-      counter-increment: insight;
-      padding: 1.7rem 0;
+    .checks li,
+    .hypotheses li {
+      margin: 0.85rem 0;
+      padding-left: 0.25rem;
+    }
+
+    .checks strong,
+    .hypotheses strong { color: var(--ink); }
+
+    .checks span,
+    .hypotheses span { color: var(--muted); }
+
+    .comparison {
+      margin: 1.2rem 0;
       display: grid;
-      grid-template-columns: 58px 1fr;
-      gap: 1.2rem;
-      border-top: 1px solid var(--line);
-    }
-
-    .insight-list li:last-child { border-bottom: 1px solid var(--line); }
-
-    .insight-list li::before {
-      content: "0" counter(insight);
-      color: var(--orange);
-      font-family: "Iowan Old Style", Georgia, serif;
-      font-size: 1.9rem;
-      line-height: 1;
-    }
-
-    .insight-list h3 {
-      font-family: inherit;
-      font-size: 1.05rem;
-      font-weight: 820;
-      letter-spacing: -0.01em;
-    }
-
-    .insight-list p {
-      margin: 0.45rem 0 0;
-      font-size: 0.94rem;
-    }
-
-    .research-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
 
-    .research-card {
-      position: relative;
-      min-height: 340px;
-      padding: 1.6rem;
-      overflow: hidden;
+    .comparison > div {
+      padding: 1rem;
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
     }
 
-    .research-card::after {
-      content: attr(data-index);
-      position: absolute;
-      right: 0.6rem;
-      bottom: -1.7rem;
-      color: rgba(23, 33, 50, 0.045);
-      font-family: "Iowan Old Style", Georgia, serif;
-      font-size: 9rem;
-      line-height: 1;
+    .comparison h4 {
+      margin: 0 0 0.4rem;
+      font-size: 0.93rem;
     }
 
-    .research-card h3 {
-      position: relative;
-      z-index: 1;
-      font-family: inherit;
-      font-size: 1.07rem;
-      font-weight: 830;
-      letter-spacing: -0.015em;
-    }
-
-    .research-card .formula {
-      position: relative;
-      z-index: 1;
-      margin: 1.4rem 0;
-      padding: 0.75rem;
-      border-radius: 12px;
-      background: var(--surface-2);
-      font-size: 0.86rem;
-      text-align: center;
-    }
-
-    .research-card p {
-      position: relative;
-      z-index: 1;
+    .comparison p {
       margin: 0;
-      font-size: 0.9rem;
+      color: var(--muted);
+      font-size: 0.86rem;
     }
 
-    .caveat {
-      margin-top: 1.2rem;
-      color: var(--ink-soft);
-      font-size: 0.78rem;
-      text-align: center;
-    }
-
-    .checklist {
-      margin: 2.2rem 0 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .checklist li {
-      padding: 1rem 0;
+    .formula-list {
+      margin: 1.2rem 0;
       display: grid;
-      grid-template-columns: 34px 1fr;
-      gap: 0.85rem;
-      border-top: 1px solid var(--line);
-    }
-
-    .checklist li:last-child { border-bottom: 1px solid var(--line); }
-
-    .check {
-      width: 25px;
-      height: 25px;
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--green);
-      border-radius: 50%;
-      color: var(--green);
-      font-size: 0.7rem;
-      font-weight: 850;
-    }
-
-    .checklist strong {
-      display: block;
-      color: var(--ink);
-      font-size: 0.94rem;
-    }
-
-    .checklist span {
-      color: var(--ink-soft);
-      font-size: 0.88rem;
-    }
-
-    .scope-box {
-      padding: 1.7rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
     }
 
-    .scope-box h3 {
-      font-family: inherit;
-      font-size: 1.04rem;
-      font-weight: 820;
+    .formula-list > div {
+      padding: 0.8rem 1rem;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
     }
 
-    .scope-box p {
-      margin: 0.6rem 0 0;
+    .formula-list > div:nth-child(2n) { border-right: 0; }
+    .formula-list > div:nth-last-child(-n + 2) { border-bottom: 0; }
+
+    .formula-list .valid strong { color: var(--green); }
+    .formula-list .invalid strong { color: var(--red); }
+
+    .formula-list strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .formula-list span { font-size: 0.88rem; }
+
+    .citation-box {
+      margin-top: 2rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .citation-box h3 {
+      margin: 0 0 0.6rem;
       font-size: 0.92rem;
     }
 
-    .references {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0.75rem 2rem;
-    }
-
-    .reference {
-      padding: 0.8rem 0;
-      border-top: 1px solid var(--line);
-      color: var(--ink-soft);
-      font-size: 0.82rem;
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      white-space: pre;
+      color: #26313a;
+      font-size: 0.76rem;
       line-height: 1.55;
     }
 
-    .reference strong { color: var(--ink); }
-
-    .closing {
-      width: min(calc(100% - 2rem), var(--wide));
-      margin: 7rem auto 0;
-      padding: clamp(2.2rem, 6vw, 5rem);
-      border-radius: 34px 34px 0 0;
-      color: white;
-      background:
-        radial-gradient(circle at 15% 15%, rgba(52, 125, 184, 0.35), transparent 28rem),
-        radial-gradient(circle at 90% 70%, rgba(35, 139, 98, 0.28), transparent 28rem),
-        var(--ink);
-      text-align: center;
+    .references {
+      margin: 1.2rem 0 0;
+      padding-left: 1.7rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
     }
 
-    .closing h2 {
-      max-width: 760px;
-      margin: 0 auto;
-      color: white;
-      font-size: clamp(2.4rem, 6vw, 5.3rem);
-      font-weight: 540;
+    .references li {
+      margin: 0.65rem 0;
+      padding-left: 0.25rem;
     }
 
-    .closing p {
-      max-width: 660px;
-      margin: 1.4rem auto 0;
-      color: rgba(255, 255, 255, 0.68);
+    .references em { color: var(--muted); }
+
+    .paper-footer {
+      margin-top: 4rem;
+      padding-top: 1.3rem;
+      border-top: 1px solid var(--line-dark);
+      color: var(--muted);
+      font-size: 0.78rem;
     }
 
-    .closing .hero-actions { justify-content: center; }
-
-    .closing .button.primary {
-      color: var(--ink);
-      background: white;
-      border-color: white;
-    }
-
-    .closing .button.secondary {
-      color: white;
-      background: transparent;
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    footer {
-      color: rgba(255, 255, 255, 0.6);
-      background: var(--ink);
-    }
-
-    .footer-inner {
-      width: min(calc(100% - 2rem), var(--wide));
-      margin: 0 auto;
-      padding: 2rem 0 3rem;
-      display: flex;
-      justify-content: space-between;
-      gap: 1.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-      font-size: 0.76rem;
-    }
-
-    .footer-inner p {
-      max-width: 620px;
-      margin: 0;
-    }
-
-    .footer-inner a { color: white; }
-
-    @media (max-width: 900px) {
-      .hero {
-        min-height: auto;
-        padding-top: 5.5rem;
+    @media (max-width: 960px) {
+      .page {
         grid-template-columns: 1fr;
+        gap: 0;
       }
 
-      .hero-card {
-        max-width: 520px;
-        transform: none;
-      }
-
-      .operator-grid,
-      .research-grid { grid-template-columns: 1fr; }
-
-      .operator,
-      .research-card { min-height: 0; }
-
-      .references { grid-template-columns: 1fr; }
+      .toc { display: none; }
+      article { max-width: var(--content); margin: 0 auto; }
     }
 
     @media (max-width: 680px) {
-      body { font-size: 16px; }
-
-      .nav-links a:not(.paper-link) { display: none; }
-      .brand { font-size: 0.88rem; }
-      .hero { padding: 4.5rem 0 3.7rem; }
-      h1 { font-size: clamp(3.25rem, 17vw, 5.4rem); }
-      h1 span { font-size: 0.32em; }
-      .lede { padding: 4rem 0; }
-      .article-section { padding-top: 5rem; }
-
-      .equation-strip,
-      .mode-grid,
-      .example-grid { grid-template-columns: 1fr; }
-
-      .equation-item {
+      body { font-size: 15px; }
+      .top-links a:not(.download) { display: none; }
+      article { padding-top: 2.8rem; }
+      .definition-grid { grid-template-columns: 1fr; }
+      .definition-grid > div {
         border-right: 0;
         border-bottom: 1px solid var(--line);
       }
-
-      .equation-item:last-child { border-bottom: 0; }
-
-      .triangle-panel {
-        padding: 0.5rem;
-        border-radius: 20px;
+      .definition-grid > div:last-child { border-bottom: 0; }
+      .comparison,
+      .formula-list { grid-template-columns: 1fr; }
+      .formula-list > div,
+      .formula-list > div:nth-child(2n),
+      .formula-list > div:nth-last-child(-n + 2) {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
       }
-
-      .triangle-panel::after { display: none; }
-      .triangle-svg text { font-size: 17px; }
-      .insight-list li { grid-template-columns: 42px 1fr; }
-      .footer-inner { flex-direction: column; }
+      .formula-list > div:last-child { border-bottom: 0; }
+      figure { padding: 0.4rem; }
+      figure svg text { font-size: 16px; }
     }
 
     @media print {
-      .site-header,
-      .hero-actions { display: none; }
-      body { background: white; }
-      .hero { min-height: auto; padding-top: 2rem; }
-      .triangle-panel,
-      .table-wrap { box-shadow: none; }
+      .topbar,
+      .toc,
+      .paper-actions { display: none; }
+      .page { display: block; width: 100%; }
+      article { padding: 0; }
+      a { color: inherit; text-decoration: none; }
     }
   </style>
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "ScholarlyArticle",
+    "@type": "TechArticle",
     "headline": "The Policy Triangle: A Taxonomy of Policy Mismatch in LLM Reinforcement Learning",
-    "author": {
-      "@type": "Person",
-      "name": "Huaiyi Zhao"
-    },
+    "author": {"@type": "Person", "name": "Huaiyi Zhao"},
     "datePublished": "2026-07-31",
-    "description": "A visual taxonomy of behavior, proximal, and current policy mismatch in large-language-model reinforcement learning."
+    "url": "https://huaiyizhao.github.io/policy-triangle/"
   }
   </script>
 </head>
 
 <body>
-  <a class="skip-link" href="#main-content">Skip to article</a>
+  <a class="skip" href="#paper">Skip to paper</a>
 
-  <header class="site-header">
-    <nav class="nav" aria-label="Primary navigation">
-      <a class="brand" href="#top" aria-label="The Policy Triangle home">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span>The Policy Triangle</span>
-      </a>
-      <div class="nav-links">
-        <a href="#triangle">Triangle</a>
-        <a href="#taxonomy">Taxonomy</a>
-        <a href="#research">Research ideas</a>
-        <a class="paper-link" href="policy-triangle.pdf">Read the paper ↗</a>
-      </div>
-    </nav>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="site-title" href="#paper">The Policy Triangle</a>
+      <nav class="top-links" aria-label="Document links">
+        <a href="#taxonomy">Method taxonomy</a>
+        <a href="#references">References</a>
+        <a class="download" href="policy-triangle.pdf">PDF</a>
+        <a class="download" href="policy-triangle-source.tar.gz">LaTeX source</a>
+      </nav>
+    </div>
   </header>
 
-  <main id="main-content">
-    <section class="hero" id="top">
-      <div>
-        <p class="eyebrow">LLM reinforcement learning · a unified view</p>
+  <div class="page">
+    <aside class="toc" aria-label="Table of contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#motivation">1. Motivation</a></li>
+        <li><a href="#triangle">2. Policy triangle</a></li>
+        <li><a href="#operators">3. Edge operators</a></li>
+        <li><a href="#accounting">4. Ratio accounting</a></li>
+        <li><a href="#taxonomy">5. Existing methods</a></li>
+        <li><a href="#design">6. Design hypotheses</a></li>
+        <li><a href="#scope">7. Scope and conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ol>
+      <div class="toc-meta">
+        Technical note<br>
+        6-page PDF · 1 figure<br>
+        Updated July 31, 2026
+      </div>
+    </aside>
+
+    <article id="paper">
+      <header class="paper-header">
+        <p class="status">Technical note · working paper</p>
         <h1>
           The Policy Triangle
-          <span>A taxonomy of policy mismatch in LLM reinforcement learning</span>
+          <span class="subtitle">A Taxonomy of Policy Mismatch in LLM Reinforcement Learning</span>
         </h1>
-        <p class="hero-dek">
-          Rollouts are generated by one policy, scored against another, and used
-          to update a third. The policy triangle turns that apparent mess into
-          three edges and three operations.
+        <p class="author-line">
+          <strong>Huaiyi Zhao</strong> · July 31, 2026 ·
+          <a href="https://huaiyizhao.github.io/policy-triangle/">Project page</a>
         </p>
-        <div class="hero-meta">
-          <strong>Huaiyi Zhao</strong>
-          <span>·</span>
-          <time datetime="2026-07-31">July 31, 2026</time>
-          <span>·</span>
-          <span>8 min read</span>
+        <div class="paper-actions">
+          <a href="policy-triangle.pdf">Download PDF</a>
+          <a href="policy-triangle-source.tar.gz">Download LaTeX source</a>
+          <a href="#citation">Citation</a>
         </div>
-        <div class="hero-actions">
-          <a class="button primary" href="#triangle">Explore the triangle ↓</a>
-          <a class="button secondary" href="policy-triangle.pdf">Download paper · PDF</a>
-        </div>
-      </div>
 
-      <aside class="hero-card" aria-label="The taxonomy at a glance">
-        <div class="metric">
-          <div class="metric-number">3</div>
-          <div class="metric-label">Policy anchors</div>
+        <div class="abstract">
+          <h2>Abstract</h2>
+          <p>
+            Large-language-model reinforcement learning increasingly separates
+            rollout generation from optimization, creating mismatch among the
+            behavior policy that generated a token, the proximal policy that
+            anchors an update, and the current policy being trained. Existing
+            methods use importance weights, clipping, and rejection, but are
+            difficult to compare because similar ratios play different roles.
+            This note organizes these mechanisms with the policy triangle:
+            \(B=q/\mu\), \(U=\pi_\theta/q\), and \(E=\pi_\theta/\mu=BU\).
+            An intervention is described by an edge, an operator—detached mask,
+            detached weight, or differentiable update shaper—and its geometry.
+            A simple accounting check requires an unshaped behavior-to-current
+            estimator to contain exactly one copy of \(E\). The result is a
+            common taxonomy for direct and decoupled methods, not a new optimizer
+            or convergence claim.
+          </p>
         </div>
-        <div class="metric">
-          <div class="metric-number">3</div>
-          <div class="metric-label">Mismatch edges</div>
-        </div>
-        <div class="metric">
-          <div class="metric-number">3</div>
-          <div class="metric-label">Operator types</div>
-        </div>
-      </aside>
-    </section>
+      </header>
 
-    <section class="lede-band">
-      <div class="lede">
+      <section id="motivation">
+        <h2>1. Motivation</h2>
         <p>
-          The hard part is not that LLM RL has too many ratios. It is that
-          <em>the same ratio is often asked to do several different jobs</em>:
-          correct old data, reject bad samples, and constrain a new update.
+          Classical policy gradients begin with REINFORCE; TRPO and PPO add
+          proximal control so that sampled data can be reused without arbitrarily
+          large updates. PPO and group-relative variants remain common in LLM
+          training, while REINFORCE-style objectives such as ReMax, RLOO, CISPO,
+          and TOPR have renewed interest.
         </p>
-      </div>
-    </section>
-
-    <section class="article-section" id="problem">
-      <p class="section-kicker">01 · The mismatch problem</p>
-      <h2>One rollout, three policy identities</h2>
-      <p>
-        In a small synchronous experiment, “the policy” can feel like one object.
-        Production LLM reinforcement learning is different. A fast inference
-        engine generates responses while a training engine performs several
-        optimizer updates. Weight synchronization is delayed. Numerical kernels,
-        precision, sampling transforms, or mixture-of-experts routing may differ.
-      </p>
-      <p>
-        As a result, three policy identities matter for every sampled token:
-        the <strong>behavior policy</strong> that actually generated it, the
-        <strong>proximal policy</strong> used as an update anchor, and the
-        <strong>current policy</strong> receiving gradients.
-      </p>
-      <p>
-        Existing methods respond with importance sampling, ratio clipping,
-        rejection, divergence masks, or sequence aggregation. These mechanisms
-        are individually understandable, yet difficult to compare when described
-        as unrelated losses. The triangle starts from policy identity instead.
-      </p>
-    </section>
-
-    <section class="wide-block" id="triangle" aria-labelledby="triangle-title">
-      <div class="triangle-panel">
-        <svg class="triangle-svg" viewBox="0 0 900 530" role="img" aria-labelledby="triangle-svg-title triangle-svg-desc">
-          <title id="triangle-svg-title">The policy triangle</title>
-          <desc id="triangle-svg-desc">Behavior policy mu, proximal policy q, and current policy pi form a triangle. B connects behavior to proximal, U connects proximal to current, and E equals B times U from behavior to current.</desc>
-          <defs>
-            <marker id="arrow-blue" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#347db8"></path>
-            </marker>
-            <marker id="arrow-orange" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#d87912"></path>
-            </marker>
-            <marker id="arrow-green" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#238b62"></path>
-            </marker>
-          </defs>
-
-          <path d="M 235 405 L 665 405" fill="none" stroke="#347db8" stroke-width="5" marker-end="url(#arrow-blue)"></path>
-          <path d="M 685 370 L 485 155" fill="none" stroke="#d87912" stroke-width="5" marker-end="url(#arrow-orange)"></path>
-          <path d="M 215 370 L 415 155" fill="none" stroke="#238b62" stroke-width="5" marker-end="url(#arrow-green)"></path>
-
-          <g transform="translate(450 405)">
-            <rect x="-72" y="-25" width="144" height="50" rx="25" fill="#fffdf8" stroke="#347db8" stroke-width="2"></rect>
-            <text x="0" y="7" text-anchor="middle" fill="#255a82" font-family="Georgia, serif" font-size="24">B = q / μ</text>
-          </g>
-          <g transform="translate(617 250) rotate(-47)">
-            <rect x="-63" y="-25" width="126" height="50" rx="25" fill="#fffdf8" stroke="#d87912" stroke-width="2"></rect>
-            <text x="0" y="7" text-anchor="middle" fill="#965008" font-family="Georgia, serif" font-size="24">U = π / q</text>
-          </g>
-          <g transform="translate(285 248) rotate(47)">
-            <rect x="-89" y="-25" width="178" height="50" rx="25" fill="#fffdf8" stroke="#238b62" stroke-width="2"></rect>
-            <text x="0" y="7" text-anchor="middle" fill="#176246" font-family="Georgia, serif" font-size="23">E = π / μ = BU</text>
-          </g>
-
-          <g transform="translate(105 380)">
-            <rect width="175" height="76" rx="20" fill="#fffdf8" stroke="#347db8" stroke-width="3"></rect>
-            <circle cx="24" cy="38" r="7" fill="#347db8"></circle>
-            <text x="42" y="35" fill="#172132" font-family="Georgia, serif" font-size="21">Behavior policy</text>
-            <text x="42" y="59" fill="#4f5b6b" font-family="Georgia, serif" font-size="20">μ · rollout</text>
-          </g>
-
-          <g transform="translate(620 380)">
-            <rect width="175" height="76" rx="20" fill="#fffdf8" stroke="#d87912" stroke-width="3"></rect>
-            <circle cx="24" cy="38" r="7" fill="#d87912"></circle>
-            <text x="42" y="35" fill="#172132" font-family="Georgia, serif" font-size="21">Proximal policy</text>
-            <text x="42" y="59" fill="#4f5b6b" font-family="Georgia, serif" font-size="20">q · anchor</text>
-          </g>
-
-          <g transform="translate(360 70)">
-            <rect width="180" height="76" rx="20" fill="#fffdf8" stroke="#238b62" stroke-width="3"></rect>
-            <circle cx="24" cy="38" r="7" fill="#238b62"></circle>
-            <text x="42" y="35" fill="#172132" font-family="Georgia, serif" font-size="21">Current policy</text>
-            <text x="42" y="59" fill="#4f5b6b" font-family="Georgia, serif" font-size="20">π · trainable</text>
-          </g>
-        </svg>
-      </div>
-      <p class="figure-caption" id="triangle-title">
-        The three ratios are not independent: the total behavior-to-current
-        mismatch factors through the proximal policy, \(E = BU\).
-      </p>
-
-      <div class="equation-strip" aria-label="Three policy ratios">
-        <div class="equation-item behavior">
-          <strong>\(B = q / \mu\)</strong>
-          <span>Already happened</span>
-        </div>
-        <div class="equation-item update">
-          <strong>\(U = \pi / q\)</strong>
-          <span>Current update drift</span>
-        </div>
-        <div class="equation-item total">
-          <strong>\(E = \pi / \mu = BU\)</strong>
-          <span>End-to-end mismatch</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="article-section">
-      <p class="section-kicker">02 · Edge semantics</p>
-      <h2>Every edge admits three operations</h2>
-      <p>
-        Once the policies are fixed, a method can be described by where it reads
-        mismatch and what it does with that information. The distinction that
-        matters most is whether gradients flow through the operation.
-      </p>
-    </section>
-
-    <section class="wide-block">
-      <div class="operator-grid">
-        <article class="operator mask">
-          <div class="operator-icon" aria-hidden="true">0/1</div>
-          <h3>Mask · select</h3>
-          <p>
-            A detached predicate drops a token, sequence, or group. It may read
-            any edge and any statistic: ratio bands, K2/K3, binary KL, full KL,
-            policy age, or metadata.
-          </p>
-          <span class="tag">No gradient · selection bias</span>
-        </article>
-
-        <article class="operator weight">
-          <div class="operator-icon" aria-hidden="true">×w</div>
-          <h3>Weight · correct</h3>
-          <p>
-            A detached multiplier changes measure. Raw, truncated, tapered, and
-            self-normalized importance sampling all live here. A ratio-carrying
-            weight “consumes” its edge.
-          </p>
-          <span class="tag">No gradient · variance control</span>
-        </article>
-
-        <article class="operator shape">
-          <div class="operator-icon" aria-hidden="true">∂</div>
-          <h3>Shape · constrain</h3>
-          <p>
-            A differentiable operator changes the update itself. PPO clipping,
-            asymmetric bounds, smooth gates, and divergence-based trust regions
-            are shapers rather than preprocessing filters.
-          </p>
-          <span class="tag">Gradient flows · update geometry</span>
-        </article>
-      </div>
-
-      <div class="callout">
         <p>
-          <strong>Geometry is a separate choice.</strong> A method may use
-          token-level importance weights, a sequence-level rejection statistic,
-          and a group-level normalization at the same time. “Token versus
-          sequence” is not a global mode.
+          At system scale, inference and training are usually separate. A rollout
+          may be generated by stale weights, a different numerical backend, lower
+          precision, or different mixture-of-experts routing. Thus the probability
+          recorded by the rollout engine need not equal the probability recomputed
+          by the learner, even when both nominally refer to the same checkpoint.
+          Several optimizer updates can further move the trainable policy before
+          the sample is consumed.
         </p>
-      </div>
-    </section>
-
-    <section class="article-section">
-      <h3>Bypass and decoupled optimization</h3>
-      <p>
-        Whether the proximal policy is distinct determines the topology, but it
-        does not decide which masks or geometries are legal.
-      </p>
-    </section>
-
-    <section class="wide-block">
-      <div class="mode-grid">
-        <article class="mode bypass">
-          <h3><span class="mode-dot" aria-hidden="true"></span>Bypass</h3>
-          <p>
-            Set \(q \equiv \mu\). The triangle collapses, so statistical
-            correction and update control both refer to the direct edge.
-            This saves a proximal forward pass but merges two causal roles.
-          </p>
-          <div class="mode-equation">\(B = 1,\quad U = E\)</div>
-        </article>
-        <article class="mode decoupled">
-          <h3><span class="mode-dot" aria-hidden="true"></span>Decoupled</h3>
-          <p>
-            Freeze a distinct proximal anchor \(q\). The behavior edge can be
-            corrected with a detached weight while the current update is
-            constrained against \(q\).
-          </p>
-          <div class="mode-equation">\(\mathrm{W}(B)\,\mathrm{C}(U)\)</div>
-        </article>
-      </div>
-    </section>
-
-    <section class="wide-block" id="accounting">
-      <div class="accounting-rule">
-        <p class="section-kicker">03 · The accounting check</p>
-        <h2>In the unshaped limit, consume exactly one copy of \(E\).</h2>
         <p>
-          Set all masks to one, remove clipping and truncation, and ignore
-          normalization. If the intended estimator changes measure from the
-          behavior policy to the current policy, its coefficient should reduce
-          to \(E = B U\)—not \(E^2\), and not a ratio with an edge missing.
+          Recent methods address these effects with a rapidly expanding vocabulary:
+          decoupled PPO, TIS and MIS, IcePop and KPop, GSPO, DPPO, TRM, ESTR, and
+          A-3PO. The mechanisms are often presented as unrelated losses, obscuring
+          whether an operation selects data, changes measure, or constrains the
+          current update.
         </p>
-
-        <div class="example-grid">
-          <div class="example good">
-            <div class="example-label">✓ Direct</div>
-            <div class="example-equation">\(\mathrm{C}(E)\) or \(\mathrm{W}(E)\)</div>
-            <small>The total edge is consumed once.</small>
-          </div>
-          <div class="example good">
-            <div class="example-label">✓ Factorized</div>
-            <div class="example-equation">\(\mathrm{W}(B)\,\mathrm{C}(U)\)</div>
-            <small>Behavior correction and update control factor \(E\).</small>
-          </div>
-          <div class="example bad">
-            <div class="example-label">✕ Double counted</div>
-            <div class="example-equation">\(\mathrm{W}(E)\,\mathrm{C}(E) \rightarrow E^2\)</div>
-            <small>A direct PPO ratio already carries \(E\).</small>
-          </div>
-          <div class="example bad">
-            <div class="example-label">✕ Mixed incorrectly</div>
-            <div class="example-equation">\(\mathrm{W}(E)\,\mathrm{C}(U) \rightarrow BU^2\)</div>
-            <small>The update edge is consumed twice.</small>
-          </div>
+        <div class="note scope">
+          <strong>Position of this note</strong>
+          <p>
+            The contribution is a coordinate system for comparing existing
+            mechanisms. It is deliberately narrower than a full theory of
+            off-policy RL and does not claim a new optimizer, performance result,
+            or convergence theorem.
+          </p>
         </div>
-      </div>
-      <p class="caveat">
-        This is bookkeeping, not a new convergence theorem. Clipping, masking,
-        geometric sequence ratios, and self-normalization may still introduce
-        intentional bias or approximation.
-      </p>
-    </section>
+      </section>
 
-    <section class="article-section" id="taxonomy">
-      <p class="section-kicker">04 · Classification</p>
-      <h2>Where familiar methods sit</h2>
-      <p>
-        The table is not a leaderboard. It isolates the policy-mismatch part of
-        each method and asks which edge is read, which operator is applied, and
-        at what geometry.
-      </p>
-    </section>
-
-    <section class="wide-block">
-      <div class="table-wrap" role="region" aria-label="Method classification table" tabindex="0">
-        <table>
-          <thead>
-            <tr>
-              <th>Method family</th>
-              <th>Topology</th>
-              <th>Triangle placement</th>
-              <th>Interpretation</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>PPO / GRPO / DAPO</td>
-              <td><span class="edge-pill direct">Coupled</span></td>
-              <td>\(\mathrm{C}_{tok}(E)\)</td>
-              <td>The direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds.</td>
-            </tr>
-            <tr>
-              <td>CISPO / TOPR</td>
-              <td><span class="edge-pill direct">Direct PG</span></td>
-              <td>\(\mathrm{W}_{tok}(E)\)</td>
-              <td>A detached clipped or tapered weight; gradients need not vanish outside a PPO band.</td>
-            </tr>
-            <tr>
-              <td>GSPO</td>
-              <td><span class="edge-pill direct">Coupled</span></td>
-              <td>\(\mathrm{C}_{geo}(E)\)</td>
-              <td>A length-normalized sequence ratio shapes the update; the original objective has no separate pre-filter.</td>
-            </tr>
-            <tr>
-              <td>Decoupled PPO / AReaL / A-3PO</td>
-              <td><span class="edge-pill factorized">Factorized</span></td>
-              <td>\(\mathrm{W}(B)\,\mathrm{C}(U)\)</td>
-              <td>Detached behavior correction is separated from a trainable proximal constraint.</td>
-            </tr>
-            <tr>
-              <td>TIS / MIS / rollout correction</td>
-              <td><span class="edge-pill factorized">Either</span></td>
-              <td>\(\mathrm{M}(B \text{ or } E)\,\mathrm{W}(B \text{ or } E)\)</td>
-              <td>Weighting and rejection compose; bypass versus decoupled changes which edge the same config denotes.</td>
-            </tr>
-            <tr>
-              <td>IcePop / KPop</td>
-              <td><span class="edge-pill direct">Usually direct</span></td>
-              <td>\(\mathrm{M}_{tok}(E)\) + base loss</td>
-              <td>IcePop uses a ratio region; KPop uses bidirectional binary-KL geometry.</td>
-            </tr>
-            <tr>
-              <td>DPPO / TRM</td>
-              <td><span class="edge-pill direct">Direct</span></td>
-              <td>Divergence \(\mathrm{M}(E)\) or \(\mathrm{C}(E)\)</td>
-              <td>Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence using worst-token divergence.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <ol class="insight-list">
-        <li>
-          <div>
-            <h3>Bypass does not mean “importance sampling is off.”</h3>
-            <p>It means \(B=1\). A direct policy-gradient or PPO loss may still carry \(E=U\).</p>
-          </div>
-        </li>
-        <li>
-          <div>
-            <h3>PPO and GSPO clipping are not preprocessing filters.</h3>
-            <p>The clipped branch changes gradient flow in an advantage-dependent direction; a detached mask rejects before the loss.</p>
-          </div>
-        </li>
-        <li>
-          <div>
-            <h3>A filter may read a different edge from the weight below it.</h3>
-            <p>A sequence may be rejected using total mismatch \(E\) while the retained tokens are corrected only with \(B\) and shaped with \(U\).</p>
-          </div>
-        </li>
-      </ol>
-    </section>
-
-    <section class="article-section">
-      <p class="section-kicker">05 · Relation to prior views</p>
-      <h2>A common coordinate system, not a replacement</h2>
-      <p>
-        <a href="https://arxiv.org/abs/2110.00641">Decoupled PPO</a> is the
-        closest precursor: it already inserts a proximal policy to separate
-        behavior correction from update control.
-        <a href="https://arxiv.org/abs/2505.24298">AReaL</a> and
-        <a href="https://arxiv.org/abs/2512.06547">A-3PO</a> adapt that
-        factorization to asynchronous LLM training. The policy
-        triangle is broader in operator placement, but shallower algorithmically:
-        it does not prescribe the proximal anchor.
-      </p>
-      <p>
-        The <a href="https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html">veRL rollout-correction formulation</a>
-        and <a href="https://arxiv.org/abs/2601.18150">FP8-RL</a> compare
-        practical TIS, MIS, bypass, decoupled, and rejection configurations. The triangle
-        abstracts that implementation pipeline and additionally places direct
-        PPO, GSPO, and divergence-based update shapers in the same view.
-      </p>
-      <p>
-        <a href="https://arxiv.org/abs/2505.17508">RPG</a> and the
-        <a href="https://arxiv.org/abs/2509.24203">off-policy interpretation of group-relative REINFORCE</a> give
-        deeper objective-level analyses of KL regularization, baselines, and data
-        shaping. This taxonomy is intentionally narrower: it focuses on the
-        critic-free policy-loss mismatch path and leaves advantage estimation and
-        reward regularization outside its scope.
-      </p>
-    </section>
-
-    <section class="article-section" id="research">
-      <p class="section-kicker">06 · What the taxonomy exposes</p>
-      <h2>Three research templates worth testing</h2>
-      <p>
-        A useful taxonomy should make empty cells visible. The following exact
-        combinations were not found as named, evaluated methods in the literature
-        reviewed through July 2026. They are hypotheses—not claims of priority or
-        effectiveness.
-      </p>
-    </section>
-
-    <section class="wide-block">
-      <div class="research-grid">
-        <article class="research-card" data-index="1">
-          <h3>Decoupled sequence shaping</h3>
-          <div class="formula">\(\mathrm{W}_{tok}(B)\,\mathrm{C}_{geo}(U)\)</div>
-          <p>
-            Correct rollout mismatch token by token, then constrain the current
-            update with a sequence-geometric proximal ratio. This combines the
-            attribution of decoupled PPO with the sequence coherence of GSPO.
-          </p>
-        </article>
-
-        <article class="research-card" data-index="2">
-          <h3>Heterogeneous two-edge control</h3>
-          <div class="formula">\(\mathrm{M}_{entropy}(B)\,\mathrm{W}(B)\,\mathrm{M}_{div}(U)\,\mathrm{C}(U)\)</div>
-          <p>
-            Use entropy-aware admission on the behavior edge and a distributional
-            trust-region statistic on the update edge. Backend noise and
-            legitimate exploration no longer share one threshold.
-          </p>
-        </article>
-
-        <article class="research-card" data-index="3">
-          <h3>Segment-aware async correction</h3>
-          <div class="formula">\(\mathrm{M}_{seq}(E)\,\mathrm{W}_{segment}(B_t)\,\mathrm{C}(U)\)</div>
-          <p>
-            For a partial rollout generated by several policy versions, normalize
-            or truncate behavior weights within version-homogeneous segments
-            instead of treating policy age as one trajectory-wide scalar.
-          </p>
-        </article>
-      </div>
-      <p class="caveat">
-        These templates require controlled experiments before they should be
-        interpreted as recommendations.
-      </p>
-    </section>
-
-    <section class="article-section">
-      <p class="section-kicker">07 · An implementation audit</p>
-      <h2>Five questions to ask before training</h2>
-      <ol class="checklist">
-        <li>
-          <span class="check">1</span>
-          <div>
-            <strong>What distribution actually generated each token?</strong>
-            <span>Include temperature, top-k/top-p transforms, backend precision, and piecewise policy versions.</span>
-          </div>
-        </li>
-        <li>
-          <span class="check">2</span>
-          <div>
-            <strong>What is the proximal anchor?</strong>
-            <span>Is \(q\) the behavior policy, a frozen training snapshot, or an approximation such as A-3PO?</span>
-          </div>
-        </li>
-        <li>
-          <span class="check">3</span>
-          <div>
-            <strong>For every operator, which edge and geometry does it read?</strong>
-            <span>Record detachment, token/sequence/group scope, statistic, sign rule, and normalization domain.</span>
-          </div>
-        </li>
-        <li>
-          <span class="check">4</span>
-          <div>
-            <strong>Does the unshaped kernel contain exactly one \(E\)?</strong>
-            <span>Check the base loss together with any rollout-correction multiplier; configurable components can double count silently.</span>
-          </div>
-        </li>
-        <li>
-          <span class="check">5</span>
-          <div>
-            <strong>Are raw tails measured before they are hidden?</strong>
-            <span>Log \(B\), \(U\), and \(E\), rejection, effective sample size, gradient variance, policy age, reward, and throughput.</span>
-          </div>
-        </li>
-      </ol>
-    </section>
-
-    <section class="article-section">
-      <div class="scope-box">
-        <h3>What this framework does not claim</h3>
+      <section id="triangle">
+        <h2>2. The policy triangle</h2>
         <p>
-          The triangle does not choose thresholds, guarantee that masking
-          improves return, repair support mismatch, or replace empirical
-          validation. It omits value/advantage off-policy correction,
-          reward-model drift, environment nonstationarity, and optimizer-state
-          staleness. Its main value is comparative: methods become easier to
-          classify, audit, and combine without conflating selection, correction,
-          and optimization.
+          For prompt \(x\), response \(y=(y_1,\ldots,y_T)\), and token context
+          \(h_t=(x,y_{&lt;t})\), define three conditional policies:
         </p>
-      </div>
-    </section>
+        <div class="equation">
+          \[
+          \mu_t=\mu(y_t\mid h_t),\qquad
+          q_t=q(y_t\mid h_t),\qquad
+          \pi_t=\pi_\theta(y_t\mid h_t).
+          \]
+        </div>
+        <p>The corresponding token ratios are</p>
+        <div class="equation">
+          \[
+          B_t=\frac{q_t}{\mu_t},\qquad
+          U_t=\frac{\pi_t}{q_t},\qquad
+          E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
+          \tag{1}
+          \]
+        </div>
 
-    <section class="article-section" id="references">
-      <p class="section-kicker">Selected references</p>
-      <h2>Starting points</h2>
-      <div class="references">
-        <div class="reference">
-          <strong>PPO.</strong> Schulman et al.,
-          <a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a>.
+        <div class="definition-grid">
+          <div class="edge-b">
+            <strong>\(B=q/\mu\)</strong>
+            <span>Mismatch already present at learner admission: staleness and train–inference disagreement.</span>
+          </div>
+          <div class="edge-u">
+            <strong>\(U=\pi/q\)</strong>
+            <span>Drift created by the current optimization step relative to its proximal anchor.</span>
+          </div>
+          <div class="edge-e">
+            <strong>\(E=\pi/\mu=BU\)</strong>
+            <span>Total behavior-to-current mismatch.</span>
+          </div>
         </div>
-        <div class="reference">
-          <strong>Decoupled PPO.</strong> Hilton et al.,
-          <a href="https://arxiv.org/abs/2110.00641">Batch Size-Invariance for Policy Optimization</a>.
-        </div>
-        <div class="reference">
-          <strong>GSPO.</strong> Zheng et al.,
-          <a href="https://arxiv.org/abs/2507.18071">Group Sequence Policy Optimization</a>.
-        </div>
-        <div class="reference">
-          <strong>AReaL.</strong> Fu et al.,
-          <a href="https://arxiv.org/abs/2505.24298">A Large-Scale Asynchronous RL System</a>.
-        </div>
-        <div class="reference">
-          <strong>A-3PO.</strong> Li et al.,
-          <a href="https://arxiv.org/abs/2512.06547">Staleness-Aware Proximal Policy Approximation</a>.
-        </div>
-        <div class="reference">
-          <strong>Rollout correction.</strong>
-          <a href="https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html">veRL mathematical formulation</a>.
-        </div>
-        <div class="reference">
-          <strong>DPPO.</strong> Qi et al.,
-          <a href="https://arxiv.org/abs/2602.04879">Rethinking the Trust Region in LLM RL</a>.
-        </div>
-        <div class="reference">
-          <strong>TRM.</strong> Li et al.,
-          <a href="https://arxiv.org/abs/2512.23075">Trust Region Masking for Long-Horizon LLM RL</a>.
-        </div>
-        <div class="reference">
-          <strong>RPG.</strong> Zhang et al.,
-          <a href="https://arxiv.org/abs/2505.17508">KL-Regularized Policy Gradient Algorithms</a>.
-        </div>
-        <div class="reference">
-          <strong>ESTR.</strong> Zhao et al.,
-          <a href="https://arxiv.org/abs/2607.22186">Entropy-Scaled Trust Regions</a>.
-        </div>
-      </div>
-      <p>
-        The paper contains the full 32-item bibliography and a more precise
-        discussion of scope and related viewpoints.
-      </p>
-    </section>
 
-    <section class="closing">
-      <h2>Three policies. Three edges. Three operations.</h2>
-      <p>
-        The identity \(E=BU\) is simple. Its usefulness comes from keeping
-        causal mismatch, statistical correction, and trainable constraints
-        separate long enough to reason about them.
-      </p>
-      <div class="hero-actions">
-        <a class="button primary" href="policy-triangle.pdf">Read the full paper</a>
-        <a class="button secondary" href="#top">Back to top ↑</a>
-      </div>
-    </section>
-  </main>
+        <figure>
+          <svg viewBox="0 0 900 500" role="img" aria-labelledby="fig-title fig-desc">
+            <title id="fig-title">Policy triangle</title>
+            <desc id="fig-desc">Behavior, proximal, and current policies connected by ratios B, U, and E equals B times U.</desc>
+            <defs>
+              <marker id="ab" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#2878ad"></path>
+              </marker>
+              <marker id="au" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#c66d0a"></path>
+              </marker>
+              <marker id="ae" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#19845d"></path>
+              </marker>
+            </defs>
 
-  <footer>
-    <div class="footer-inner">
-      <p>
-        © 2026 Huaiyi Zhao. This article presents a conceptual taxonomy, not
-        empirical evidence for a new optimizer.
-      </p>
-      <p>
-        OpenAI's GPT assisted with drafting and language editing. The author is
-        responsible for the analysis and all claims.
-      </p>
-    </div>
-  </footer>
+            <line x1="235" y1="390" x2="665" y2="390" stroke="#2878ad" stroke-width="4" marker-end="url(#ab)"></line>
+            <line x1="690" y1="355" x2="490" y2="150" stroke="#c66d0a" stroke-width="4" marker-end="url(#au)"></line>
+            <line x1="210" y1="355" x2="410" y2="150" stroke="#19845d" stroke-width="4" marker-end="url(#ae)"></line>
+
+            <g transform="translate(450 390)">
+              <rect x="-65" y="-22" width="130" height="44" rx="5" fill="#fff" stroke="#2878ad"></rect>
+              <text x="0" y="7" text-anchor="middle" font-family="Georgia,serif" font-size="22" fill="#205f8b">B = q / μ</text>
+            </g>
+            <g transform="translate(600 250)">
+              <rect x="-60" y="-22" width="120" height="44" rx="5" fill="#fff" stroke="#c66d0a"></rect>
+              <text x="0" y="7" text-anchor="middle" font-family="Georgia,serif" font-size="22" fill="#8f4c05">U = π / q</text>
+            </g>
+            <g transform="translate(290 250)">
+              <rect x="-82" y="-22" width="164" height="44" rx="5" fill="#fff" stroke="#19845d"></rect>
+              <text x="0" y="7" text-anchor="middle" font-family="Georgia,serif" font-size="21" fill="#126746">E = π / μ = BU</text>
+            </g>
+
+            <g transform="translate(90 365)">
+              <rect width="190" height="64" rx="6" fill="#fff" stroke="#2878ad" stroke-width="2"></rect>
+              <circle cx="22" cy="32" r="6" fill="#2878ad"></circle>
+              <text x="38" y="29" font-family="Georgia,serif" font-size="19" fill="#17202a">Behavior policy μ</text>
+              <text x="38" y="49" font-family="Arial,sans-serif" font-size="14" fill="#59636e">rollout engine</text>
+            </g>
+            <g transform="translate(620 365)">
+              <rect width="190" height="64" rx="6" fill="#fff" stroke="#c66d0a" stroke-width="2"></rect>
+              <circle cx="22" cy="32" r="6" fill="#c66d0a"></circle>
+              <text x="38" y="29" font-family="Georgia,serif" font-size="19" fill="#17202a">Proximal policy q</text>
+              <text x="38" y="49" font-family="Arial,sans-serif" font-size="14" fill="#59636e">frozen update anchor</text>
+            </g>
+            <g transform="translate(355 75)">
+              <rect width="190" height="64" rx="6" fill="#fff" stroke="#19845d" stroke-width="2"></rect>
+              <circle cx="22" cy="32" r="6" fill="#19845d"></circle>
+              <text x="38" y="29" font-family="Georgia,serif" font-size="19" fill="#17202a">Current policy π</text>
+              <text x="38" y="49" font-family="Arial,sans-serif" font-size="14" fill="#59636e">trainable parameters</text>
+            </g>
+          </svg>
+          <figcaption>
+            Figure 1. Three policy anchors and their edge ratios. The colors
+            identify mismatch sources only; operators and geometry are chosen
+            independently on each edge.
+          </figcaption>
+        </figure>
+
+        <h3>2.1 Bypass and factorization</h3>
+        <div class="comparison">
+          <div>
+            <h4>Bypass: \(q\equiv\mu\)</h4>
+            <p>
+              Then \(B=1\) and \(U=E\). Statistical correction and proximal
+              control are compressed onto one direct edge. This avoids a
+              proximal forward pass but loses causal attribution.
+            </p>
+          </div>
+          <div>
+            <h4>Decoupled: distinct frozen \(q\)</h4>
+            <p>
+              The learner can correct rollout mismatch on \(B\) while
+              constraining the current update on \(U\), typically as
+              \(\mathrm W(B)\mathrm C(U)\).
+            </p>
+          </div>
+        </div>
+        <p>
+          The proximal anchor is itself a design variable. A-3PO, for example,
+          approximates it by interpolating behavior and current log-probabilities
+          to avoid an additional model forward pass while retaining the
+          factorization \(E=BU\).
+        </p>
+      </section>
+
+      <section id="operators">
+        <h2>3. Edge operators and geometry</h2>
+        <p>
+          For any edge \(X\in\{B,U,E\}\), distinguish operations by their gradient
+          semantics rather than by their names in a particular implementation.
+        </p>
+
+        <div class="table-wrap">
+          <table class="operator-table">
+            <thead>
+              <tr>
+                <th>Operator</th>
+                <th>Definition</th>
+                <th>Gradient semantics</th>
+                <th>Typical role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="op-mask">Mask \(\mathrm M\)</td>
+                <td>\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\)</td>
+                <td>Detached</td>
+                <td>Select a token, sequence, or group using a ratio band, K2/K3 statistic, divergence, age, or metadata.</td>
+              </tr>
+              <tr>
+                <td class="op-weight">Weight \(\mathrm W\)</td>
+                <td>\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\)</td>
+                <td>Detached</td>
+                <td>Change measure using raw, truncated, tapered, or self-normalized importance sampling.</td>
+              </tr>
+              <tr>
+                <td class="op-shape">Shaper \(\mathrm C\)</td>
+                <td>Enters the loss through \(\pi_\theta\)</td>
+                <td>Differentiable</td>
+                <td>Constrain or reshape the current update using clipping, smooth gates, or divergence geometry.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          PPO's effective token coefficient is advantage-sign dependent:
+        </p>
+        <div class="equation">
+          \[
+          \mathrm C^{\mathrm{PPO}}(X,\hat A)=
+          X\,\mathbf 1\!\left[
+          (\hat A\ge0 \land X\le1+\epsilon_+)
+          \;\lor\;
+          (\hat A&lt;0 \land X\ge1-\epsilon_-)
+          \right].
+          \tag{2}
+          \]
+        </div>
+        <p>
+          Selecting the clipped branch removes gradient in a particular direction.
+          This differs from truncating a detached importance weight. DAPO changes
+          the sign-dependent bounds; GSPO replaces the token ratio with a
+          length-normalized sequence-geometric ratio.
+        </p>
+
+        <h3>3.1 Geometry is local to an attachment</h3>
+        <p>
+          An algorithm need not have one global granularity. Each operator may
+          independently use:
+        </p>
+        <ul class="checks">
+          <li><strong>Token ratio:</strong> <span>\(X_t\).</span></li>
+          <li><strong>Sequence product:</strong> <span>\(R_X=\prod_tX_t\), an exact trajectory ratio but usually high variance.</span></li>
+          <li><strong>Geometric ratio:</strong> <span>\(G_X=\exp(T^{-1}\sum_t\log X_t)\), length normalized but not a trajectory density ratio.</span></li>
+          <li><strong>Group statistic:</strong> <span>aggregation over several responses from one prompt.</span></li>
+          <li><strong>Divergence:</strong> <span>sampled binary KL, top-\(k\), or full-distribution KL/TV.</span></li>
+        </ul>
+
+        <p>
+          A broad class of critic-free policy-loss gradients can be written as
+        </p>
+        <div class="equation">
+          \[
+          \widehat g=
+          \frac{1}{Z}\sum_i
+          \mathrm M_i\,\overline{\mathrm W}_i\,\mathrm C_i\,
+          \hat A_i\nabla_\theta\log\pi_\theta(y_i\mid h_i).
+          \tag{3}
+          \]
+        </div>
+        <p>
+          A concrete attachment is specified by
+          \((\text{edge},\text{operator},\text{scope},\text{statistic},
+          \text{sign rule},\text{normalization})\).
+        </p>
+      </section>
+
+      <section id="accounting">
+        <h2>4. Ratio accounting</h2>
+        <p>
+          Consider the unshaped limit: all masks equal one, truncation and
+          normalization are disabled, and every shaper is on its linear branch.
+        </p>
+        <div class="note accounting">
+          <strong>Accounting check</strong>
+          <p>
+            If an estimator is intended to reproduce a direct behavior-to-current
+            policy-gradient kernel, its unshaped coefficient should contain
+            exactly one copy of \(E=\pi/\mu=BU\).
+          </p>
+        </div>
+        <div class="equation">
+          \[
+          K^0=E=BU.
+          \tag{4}
+          \]
+        </div>
+        <p>
+          This is bookkeeping rather than a new theorem. Inserting \(q\) into
+          \(\pi/\mu\) gives \((q/\mu)(\pi/q)=BU\). An extra ratio changes the
+          measure; an omitted ratio leaves an edge uncorrected.
+        </p>
+
+        <div class="formula-list">
+          <div class="valid">
+            <strong>Valid direct</strong>
+            <span>\(\mathrm C(E)\) or \(\mathrm W(E)\rightarrow E\)</span>
+          </div>
+          <div class="valid">
+            <strong>Valid factorization</strong>
+            <span>\(\mathrm W(B)\mathrm C(U)\rightarrow BU\)</span>
+          </div>
+          <div class="invalid">
+            <strong>Double counted</strong>
+            <span>\(\mathrm W(E)\mathrm C(E)\rightarrow E^2\)</span>
+          </div>
+          <div class="invalid">
+            <strong>Mixed incorrectly</strong>
+            <span>\(\mathrm W(E)\mathrm C(U)\rightarrow BU^2\)</span>
+          </div>
+        </div>
+
+        <p>
+          Ratio completeness is narrower than unbiasedness. A ratio-complete
+          estimator can still be biased by clipping, masking, token-level
+          approximation, geometric aggregation, or self-normalization. The check
+          only detects missing and duplicated edge factors before those deliberate
+          bias–variance transformations.
+        </p>
+
+        <h3>4.1 Nonlinear placement matters</h3>
+        <div class="equation">
+          \[
+          \operatorname{clip}(E)\ne
+          \operatorname{clip}(B)\operatorname{clip}(U),\qquad
+          \mathrm M(E)\ne\mathrm M(B)\mathrm M(U).
+          \tag{5}
+          \]
+        </div>
+        <p>
+          For \(k_3(x)=x-1-\log x\),
+        </p>
+        <div class="equation">
+          \[
+          k_3(BU)=k_3(B)+k_3(U)+(B-1)(U-1).
+          \tag{6}
+          \]
+        </div>
+        <p>
+          Therefore, filtering total mismatch is not equivalent to filtering the
+          behavior and update edges independently. A mask may nevertheless read
+          any edge without forcing a downstream importance weight to consume the
+          same edge.
+        </p>
+
+        <h3>4.2 Variance control</h3>
+        <p>
+          Truncated importance sampling uses
+          \(\widetilde w_i=\min(w_i,c)\). Self-normalization is orthogonal:
+        </p>
+        <div class="equation">
+          \[
+          \overline w_i=
+          \frac{\widetilde w_i}
+          {\sum_j M_j\widetilde w_j/\sum_jM_j}.
+          \tag{7}
+          \]
+        </div>
+        <p>
+          Its domain—token, sequence, prompt group, or batch—is part of the
+          algorithm. It stabilizes mean gradient scale but is biased at finite
+          sample size.
+        </p>
+      </section>
+
+      <section id="taxonomy">
+        <h2>5. Existing methods on the triangle</h2>
+        <p>
+          The table isolates policy mismatch. It does not enumerate reward
+          shaping, advantage construction, entropy bonuses, dynamic sampling, or
+          systems optimizations.
+        </p>
+
+        <div class="table-wrap">
+          <table class="method-table">
+            <thead>
+              <tr>
+                <th>Method family</th>
+                <th>Topology</th>
+                <th>Triangle placement</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PPO / GRPO / DAPO</td>
+                <td>Coupled</td>
+                <td>\(\mathrm C_{\mathrm{tok}}(E)\)</td>
+                <td>One direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds.</td>
+              </tr>
+              <tr>
+                <td>CISPO / TOPR</td>
+                <td>Direct PG</td>
+                <td>\(\mathrm W_{\mathrm{tok}}(E)\)</td>
+                <td>Detached clipped or tapered weight; gradients need not vanish outside a PPO band.</td>
+              </tr>
+              <tr>
+                <td>GSPO</td>
+                <td>Coupled</td>
+                <td>\(\mathrm C_{\mathrm{geo}}(E)\)</td>
+                <td>Sequence-geometric shaping; the original objective does not add a separate pre-filter.</td>
+              </tr>
+              <tr>
+                <td>Decoupled PPO / AReaL / A-3PO</td>
+                <td>Factorized</td>
+                <td>\(\mathrm W(B)\mathrm C(U)\)</td>
+                <td>Behavior correction is detached from the trainable proximal constraint.</td>
+              </tr>
+              <tr>
+                <td>TIS / MIS / rollout correction</td>
+                <td>Either</td>
+                <td>\(\mathrm M(B\text{ or }E)\mathrm W(B\text{ or }E)\), optional \(\mathrm C\)</td>
+                <td>Weighting and rejection compose; bypass and decoupled modes change edge semantics.</td>
+              </tr>
+              <tr>
+                <td>IcePop / KPop</td>
+                <td>Usually direct</td>
+                <td>\(\mathrm M_{\mathrm{tok}}(E)\) plus a base loss</td>
+                <td>IcePop uses a ratio region; KPop uses bidirectional binary-KL geometry sensitive to absolute probability.</td>
+              </tr>
+              <tr>
+                <td>DPPO / TRM</td>
+                <td>Direct</td>
+                <td>Divergence \(\mathrm M(E)\) or \(\mathrm C(E)\)</td>
+                <td>Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>5.1 Three recurring ambiguities</h3>
+        <ol class="checks">
+          <li>
+            <strong>Bypass is not “IS disabled.”</strong>
+            <span>It means \(B=1\); the direct loss may still contain \(E=U\).</span>
+          </li>
+          <li>
+            <strong>PPO and GSPO clipping are not pre-filters.</strong>
+            <span>Their branches change gradient flow in an advantage-dependent direction; a detached mask rejects independently of that direction.</span>
+          </li>
+          <li>
+            <strong>A decoupled filter may read any raw edge.</strong>
+            <span>\(\mathrm M(B)\) is static when \(q\) is frozen, whereas \(\mathrm M(U)\) and \(\mathrm M(E)\) generally change as \(\pi\) is updated.</span>
+          </li>
+        </ol>
+
+        <h3>5.2 Relation to nearby views</h3>
+        <p>
+          Decoupled PPO is the closest precursor because it explicitly inserts a
+          proximal policy between behavior and current policies. AReaL and A-3PO
+          operationalize or approximate that factorization for asynchronous LLM
+          training. The triangle is broader in operator placement but does not
+          prescribe a particular proximal anchor.
+        </p>
+        <p>
+          The veRL rollout-correction formulation and FP8-RL compare practical
+          TIS, MIS, rejection, bypass, and decoupled configurations. The triangle
+          abstracts that implementation pipeline and additionally places direct
+          PPO, GSPO, and divergence-based shapers in the same coordinates.
+        </p>
+        <p>
+          RPG and the off-policy interpretation of group-relative REINFORCE give
+          deeper analyses of KL regularization, baselines, and data shaping. Those
+          axes are intentionally outside this critic-free policy-loss taxonomy.
+          Jackpot also lies partly outside the view because it changes the
+          behavior distribution through rejection and joint rollout-model updates,
+          rather than only operating on stored trajectories downstream.
+        </p>
+      </section>
+
+      <section id="design">
+        <h2>6. Design implications and hypotheses</h2>
+        <p>
+          A useful heuristic is to place detached statistical correction near the
+          behavior anchor and differentiable control near the current anchor.
+          Mismatch on \(B\) has already happened and can only be selected or
+          reweighted. Drift on \(U\) is produced by the current optimizer and is
+          therefore a natural target for a trainable trust region.
+        </p>
+
+        <h3>6.1 Partial and piecewise behavior policies</h3>
+        <p>
+          A resumed or interrupted trajectory may be generated by several policy
+          versions. Let \(v(t)\) denote the version used at token \(t\):
+        </p>
+        <div class="equation">
+          \[
+          \mu(y\mid x)=\prod_t\mu_{v(t)}(y_t\mid h_t),\qquad
+          B_t=\frac{q_t}{\mu_{v(t),t}}.
+          \tag{8}
+          \]
+        </div>
+        <p>
+          Stored per-token sampling log-probabilities support the observed
+          conditional ratio, but do not correct unlogged prompt selection,
+          replay selection, or resume-selection bias.
+        </p>
+
+        <h3>6.2 Taxonomy-derived research hypotheses</h3>
+        <div class="note warning">
+          <strong>Novelty and evidence caveat</strong>
+          <p>
+            To the best of the literature search through July 2026, the exact
+            compositions below were not found as named, evaluated methods in the
+            cited work. They are design templates, not priority or effectiveness
+            claims.
+          </p>
+        </div>
+        <ol class="hypotheses">
+          <li>
+            <strong>Decoupled sequence shaping:</strong>
+            <span>
+              \(\mathrm W_{\mathrm{tok}}(B)\mathrm C_{\mathrm{geo}}(U)\).
+              Correct rollout mismatch token-wise, then constrain the update with
+              a sequence-geometric proximal ratio.
+            </span>
+          </li>
+          <li>
+            <strong>Heterogeneous two-edge control:</strong>
+            <span>
+              entropy-adaptive admission and \(\mathrm W(B)\) on the behavior edge,
+              followed by a divergence mask and ordinary \(\mathrm C(U)\) on the
+              update edge.
+            </span>
+          </li>
+          <li>
+            <strong>Segment-aware asynchronous correction:</strong>
+            <span>
+              normalize or truncate \(\mathrm W(B_t)\) within policy-version
+              segments, optionally gate the whole sequence using \(E\), and retain
+              \(\mathrm C(U)\) for the current update.
+            </span>
+          </li>
+        </ol>
+
+        <h3>6.3 Implementation audit</h3>
+        <ol class="checks">
+          <li><strong>Identify the actual behavior distribution.</strong> <span>Include sampling transforms, backend precision, and piecewise versions.</span></li>
+          <li><strong>Identify the proximal anchor.</strong> <span>State whether it equals behavior, is a frozen snapshot, or is approximated.</span></li>
+          <li><strong>Record every attachment.</strong> <span>Edge, detachment, statistic, scope, sign rule, and normalization domain.</span></li>
+          <li><strong>Check the unshaped kernel.</strong> <span>Verify that intended behavior-to-current correction contains exactly one \(E\).</span></li>
+          <li><strong>Instrument raw ratios before truncation.</strong> <span>Report \(B\), \(U\), \(E\), rejection, effective sample size, gradient variance, age, reward, and throughput.</span></li>
+        </ol>
+      </section>
+
+      <section id="scope">
+        <h2>7. Scope and conclusion</h2>
+        <p>
+          The triangle does not choose thresholds, guarantee that masking improves
+          return, repair support mismatch, or replace empirical validation. It
+          omits value/advantage off-policy correction, reward-model drift,
+          environment nonstationarity, and optimizer-state staleness.
+          Sequence-product importance sampling can be formally exact and
+          statistically unusable; geometric statistics can be stable while not
+          being exact change-of-measure factors.
+        </p>
+        <p>
+          Within this scope, the behavior, proximal, and current policies provide
+          a compact set of anchors. Masks select regions, detached weights change
+          measure, and differentiable shapers control the update; each chooses its
+          own geometry. Bypass collapses the triangle, while decoupling separates
+          exogenous rollout mismatch from endogenous update drift.
+        </p>
+        <p>
+          The main value is comparative. Requiring the unshaped kernel to recover
+          one copy of \(E=BU\) exposes missing or duplicated correction, and the
+          edge–operator–geometry representation makes published mechanisms and
+          underexplored combinations easier to state in the same language.
+        </p>
+
+        <div class="citation-box" id="citation">
+          <h3>Suggested citation</h3>
+          <pre>@misc{zhao2026policytriangle,
+  title  = {The Policy Triangle: A Taxonomy of Policy Mismatch
+            in LLM Reinforcement Learning},
+  author = {Huaiyi Zhao},
+  year   = {2026},
+  url    = {https://huaiyizhao.github.io/policy-triangle/}
+}</pre>
+        </div>
+      </section>
+
+      <section id="references">
+        <h2>References</h2>
+        <ol class="references">
+          <li>Ahmadian, A. et al. “Back to Basics: Revisiting REINFORCE Style Optimization for Learning from Human Feedback in LLMs.” <em>arXiv</em>, 2024. <a href="https://arxiv.org/abs/2402.14740">2402.14740</a>.</li>
+          <li>Chen, Z. et al. “Jackpot: Optimal Budgeted Rejection Sampling for Extreme Actor–Policy Mismatch Reinforcement Learning.” <em>ICLR 2026</em>. <a href="https://arxiv.org/abs/2602.06107">2602.06107</a>.</li>
+          <li>DeepSeek-AI et al. “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2501.12948">2501.12948</a>.</li>
+          <li>Fu, W. et al. “AReaL: A Large-Scale Asynchronous Reinforcement Learning System for Language Reasoning.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2505.24298">2505.24298</a>.</li>
+          <li>Guo, J. et al. “KPop: Taming Training–Inference Mismatch in Reinforcement Learning with Adaptive Masking Regions.” Technical report, 2026. <a href="https://ringtech.notion.site/kpop">Project page</a>.</li>
+          <li>Hilton, J., Cobbe, K., and Schulman, J. “Batch Size-Invariance for Policy Optimization.” <em>NeurIPS</em>, 2022. <a href="https://arxiv.org/abs/2110.00641">2110.00641</a>.</li>
+          <li>Ionides, E. L. “Truncated Importance Sampling.” <em>Journal of Computational and Graphical Statistics</em>, 2008. <a href="https://doi.org/10.1198/106186008X320456">doi</a>.</li>
+          <li>Le Roux, N. et al. “Tapered Off-Policy REINFORCE: Stable and Efficient Reinforcement Learning for LLMs.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2503.14286">2503.14286</a>.</li>
+          <li>Li, X., Wu, S., and Shen, Z. “A-3PO: Accelerating Asynchronous LLM Training with Staleness-Aware Proximal Policy Approximation.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2512.06547">2512.06547</a>.</li>
+          <li>Li, Y. et al. “Trust Region Masking for Long-Horizon LLM Reinforcement Learning.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2512.23075">2512.23075</a>.</li>
+          <li>Li, Z. et al. “ReMax: A Simple, Effective, and Efficient Reinforcement Learning Method for Aligning Large Language Models.” <em>arXiv</em>, 2023. <a href="https://arxiv.org/abs/2310.10505">2310.10505</a>.</li>
+          <li>Ling Team et al. “Every Step Evolves: Scaling Reinforcement Learning for Trillion-Scale Thinking Model.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2510.18855">2510.18855</a>.</li>
+          <li>MiniMax et al. “MiniMax-M1: Scaling Test-Time Compute Efficiently with Lightning Attention.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2506.13585">2506.13585</a>.</li>
+          <li>Ouyang, L. et al. “Training Language Models to Follow Instructions with Human Feedback.” <em>NeurIPS</em>, 2022. <a href="https://arxiv.org/abs/2203.02155">2203.02155</a>.</li>
+          <li>Owen, A. B. <em>Monte Carlo Theory, Methods and Examples</em>, 2013. <a href="https://artowen.su.domains/mc/">Online book</a>.</li>
+          <li>Qi, P. et al. “Rethinking the Trust Region in LLM Reinforcement Learning.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2602.04879">2602.04879</a>.</li>
+          <li>Qiu, Z. et al. “FP8-RL: A Practical and Stable Low-Precision Stack for LLM Reinforcement Learning.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2601.18150">2601.18150</a>.</li>
+          <li>Schulman, J. et al. “Trust Region Policy Optimization.” <em>ICML</em>, 2015. <a href="https://arxiv.org/abs/1502.05477">1502.05477</a>.</li>
+          <li>Schulman, J. et al. “Proximal Policy Optimization Algorithms.” <em>arXiv</em>, 2017. <a href="https://arxiv.org/abs/1707.06347">1707.06347</a>.</li>
+          <li>Shao, Z. et al. “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv</em>, 2024. <a href="https://arxiv.org/abs/2402.03300">2402.03300</a>.</li>
+          <li>Sheng, G. et al. “HybridFlow: A Flexible and Efficient RLHF Framework.” <em>arXiv</em>, 2024. <a href="https://arxiv.org/abs/2409.19256">2409.19256</a>.</li>
+          <li>veRL contributors. “Rollout Correction: Mathematical Formulations and Configuration Guide.” 2026. <a href="https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html">Documentation</a>.</li>
+          <li>Williams, R. J. “Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning.” <em>Machine Learning</em>, 1992. <a href="https://doi.org/10.1007/BF00992696">doi</a>.</li>
+          <li>Yao, C. et al. “Group-Relative REINFORCE Is Secretly an Off-Policy Algorithm.” <em>ICLR 2026</em>. <a href="https://arxiv.org/abs/2509.24203">2509.24203</a>.</li>
+          <li>Yu, Q. et al. “DAPO: An Open-Source LLM Reinforcement Learning System at Scale.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2503.14476">2503.14476</a>.</li>
+          <li>Zhang, Y. et al. “Beyond Precision: Training–Inference Mismatch Is an Optimization Problem and Simple LR Scheduling Fixes It.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2602.01826">2602.01826</a>.</li>
+          <li>Zhang, Y. et al. “On the Design of KL-Regularized Policy Gradient Algorithms for LLM Reasoning.” <em>ICLR 2026</em>. <a href="https://arxiv.org/abs/2505.17508">2505.17508</a>.</li>
+          <li>Zhao, G. et al. “Deconstructing Off-Policy Ratios: Entropy-Scaled Trust Regions for Asynchronous Reinforcement Learning.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2607.22186">2607.22186</a>.</li>
+          <li>Zhao, S. et al. “Large Language Model Post-Training: A Unified View of Off-Policy and On-Policy Learning.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2604.07941">2604.07941</a>.</li>
+          <li>Zheng, C. et al. “Group Sequence Policy Optimization.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2507.18071">2507.18071</a>.</li>
+          <li>Zhong, T. et al. “Diagnosing Training Inference Mismatch in LLM Reinforcement Learning.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2605.14220">2605.14220</a>.</li>
+          <li>Ziegler, D. M. et al. “Fine-Tuning Language Models from Human Preferences.” <em>arXiv</em>, 2019. <a href="https://arxiv.org/abs/1909.08593">1909.08593</a>.</li>
+        </ol>
+      </section>
+
+      <footer class="paper-footer">
+        <p>
+          OpenAI's GPT assisted with drafting and language editing. Huaiyi Zhao
+          is responsible for the analysis and all claims.
+        </p>
+      </footer>
+    </article>
+  </div>
 </body>
 </html>
