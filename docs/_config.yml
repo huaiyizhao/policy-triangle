@@ -1,5 +1,5 @@
 title: The Policy Triangle
-description: A technical taxonomy of policy mismatch in LLM reinforcement learning.
+description: A unified view of policy-mismatch mitigation in LLM reinforcement learning.
 url: https://huaiyizhao.github.io
 baseurl: /policy-triangle
 markdown: kramdown

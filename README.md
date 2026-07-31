@@ -1,7 +1,8 @@
 # The Policy Triangle blog
 
 This repository publishes a technical blog about the policy-triangle framework
-for comparing policy mismatch mechanisms in LLM reinforcement learning.
+for comparing methods that mitigate policy mismatch in LLM reinforcement
+learning.
 
 ## Blog files
 

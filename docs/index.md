@@ -2,8 +2,8 @@
 layout: technical
 title: The Policy Triangle
 short_title: The Policy Triangle
-subtitle: A Taxonomy of Policy Mismatch in LLM Reinforcement Learning
-description: A technical taxonomy of behavior, proximal, and current policy mismatch in LLM reinforcement learning.
+subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
+description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
 date: 2026-07-31
 ---
@@ -393,8 +393,8 @@ established improvements.
 ### Suggested citation {#citation}
 
     @misc{zhao2026policytriangle,
-      title  = {The Policy Triangle: A Taxonomy of Policy Mismatch
-                in LLM Reinforcement Learning},
+      title  = {The Policy Triangle: A Unified View of Policy-Mismatch
+                Mitigation in LLM Reinforcement Learning},
       author = {Huaiyi Zhao},
       year   = {2026},
       url    = {https://huaiyizhao.github.io/policy-triangle/}

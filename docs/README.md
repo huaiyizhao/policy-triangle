@@ -2,7 +2,7 @@
 
 This directory is a standalone GitHub Pages site for:
 
-> **The Policy Triangle: A Taxonomy of Policy Mismatch in LLM Reinforcement Learning**
+> **The Policy Triangle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning**
 
 ## Edit the article
 
