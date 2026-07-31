@@ -17,35 +17,33 @@ date: 2026-07-31
 ## Abstract
 
 Large-language-model reinforcement learning increasingly separates rollout
-generation from optimization, creating mismatch among the behavior policy that
-generated a token, the proximal policy that anchors an update, and the current
-policy being trained. Existing methods use importance weights, clipping, and
-rejection, but are difficult to compare because similar ratios play different
-roles. This note organizes these mechanisms with the policy triangle:
-\\(B=q/\mu\\), \\(U=\pi_\theta/q\\), and \\(E=\pi_\theta/\mu=BU\\). An intervention is
-described by an edge, an operator—detached mask, detached weight, or
-differentiable update shaper—and its token-, sequence-, or group-level
-geometry. The result is a common taxonomy that separates mismatch source from
-intervention semantics across direct and decoupled methods, not a new optimizer
-or convergence claim.
+generation from optimization. The policy that generated a response can
+therefore differ from both the policy that anchors an update and the policy
+currently being trained. Existing mitigation methods use rejection, importance
+weighting, clipping, and divergence control, but are often presented as
+unrelated algorithms. This article places them in one solution space using the
+policy triangle. A method is located by three coordinates: the **edge** on which
+mismatch is measured, the **operator** that selects, reweights, or shapes an
+update, and the **geometry**—token, sequence, group, or distribution—on which
+that operator acts. Mapping existing methods into these coordinates separates
+shared design choices from method-specific details and exposes open regions of
+the mitigation space. The framework is a unified view, not a new optimizer or
+convergence claim.
 
 </div>
 
 ## 1. Motivation {#motivation}
 
-Classical policy gradients begin with REINFORCE
-([Williams, 1992](https://doi.org/10.1007/BF00992696)); TRPO and PPO add
-proximal control so that sampled data can be reused without arbitrarily large
-updates ([Schulman et al., 2015](https://arxiv.org/abs/1502.05477);
-[Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). PPO and
-group-relative variants remain common in LLM training
-([Shao et al., 2024](https://arxiv.org/abs/2402.03300);
-[Yu et al., 2025](https://arxiv.org/abs/2503.14476)), while REINFORCE-style
-objectives such as ReMax, RLOO, CISPO, and TOPR have renewed interest
-([Li et al., 2023](https://arxiv.org/abs/2310.10505);
-[Ahmadian et al., 2024](https://arxiv.org/abs/2402.14740);
-[MiniMax et al., 2025](https://arxiv.org/abs/2506.13585);
-[Le Roux et al., 2025](https://arxiv.org/abs/2503.14286)).
+Policy-gradient training reuses responses after they have been generated.
+Classical methods such as REINFORCE, TRPO, and PPO already distinguish sampling
+from updating ([Williams, 1992](https://doi.org/10.1007/BF00992696);
+[Schulman et al., 2015](https://arxiv.org/abs/1502.05477);
+[Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). In LLM systems,
+however, the separation is unusually large: rollout engines and training
+workers may run different model versions, numerical kernels, precisions, and
+routing decisions.
+
+### 1.1 Where mismatch comes from
 
 At system scale, inference and training are usually separate
 ([Sheng et al., 2024](https://arxiv.org/abs/2409.19256);
@@ -59,26 +57,61 @@ nominally refer to the same checkpoint
 updates can further move the trainable policy before the sample is consumed
 ([Zhang et al., 2026](https://arxiv.org/abs/2602.01826)).
 
-Recent methods address these effects with a rapidly expanding vocabulary:
-decoupled PPO ([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)), TIS and
-MIS ([Ionides, 2008](https://doi.org/10.1198/106186008X320456);
-[veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)),
+These effects create two conceptually different sources of mismatch. First,
+data may already disagree with the learner when it arrives because the rollout
+policy is stale or numerically different. Second, the trainable policy may move
+further while the same data is reused across optimizer steps. A direct ratio
+conflates the two; a factorized view keeps their causes visible.
+
+### 1.2 What existing mitigations do
+
+Despite a rapidly expanding vocabulary, most mitigation mechanisms perform one
+of three roles:
+
+1. **Select:** reject a token, response, or group judged too far from a
+   reference policy.
+2. **Reweight:** change how strongly sampled data contributes, usually with an
+   importance ratio or a truncated, tapered, or normalized variant.
+3. **Constrain:** shape the trainable update with clipping, a trust region, or a
+   divergence-based gate.
+
+The same role can act on a token ratio, a sequence statistic, a prompt group,
+or a fuller distributional divergence. Decoupled PPO
+([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)), rollout correction
+([veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)),
 IcePop and KPop ([Ling Team et al., 2025](https://arxiv.org/abs/2510.18855);
 [Guo et al., 2026](https://ringtech.notion.site/kpop)), GSPO
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)), DPPO
 ([Qi et al., 2026](https://arxiv.org/abs/2602.04879)), TRM
-([Li et al., 2025](https://arxiv.org/abs/2512.23075)), ESTR
-([Zhao et al., 2026](https://arxiv.org/abs/2607.22186)), and A-3PO
-([Li et al., 2025](https://arxiv.org/abs/2512.06547)). The mechanisms are often
-presented as unrelated losses, obscuring whether an operation selects data,
-changes measure, or constrains the current update.
+([Li et al., 2025](https://arxiv.org/abs/2512.23075)), and A-3PO
+([Li et al., 2025](https://arxiv.org/abs/2512.06547)) choose different
+combinations of these recurring decisions.
+
+Named methods often bundle together the source of mismatch, the intervention
+role, and the scale at which it operates. Comparing names alone therefore
+obscures which design choice actually differs.
 
 > **Position of this note.** The contribution is a coordinate system for
-> comparing existing mechanisms. It is deliberately narrower than a full
-> theory of off-policy RL and does not claim a new optimizer, performance
-> result, or convergence theorem.
+> viewing the full policy-mismatch mitigation solution space. It maps existing
+> methods into shared coordinates and uses the unoccupied regions to organize
+> possible designs. It is deliberately narrower than a full theory of
+> off-policy RL and does not claim a new optimizer, performance result, or
+> convergence theorem.
 
-## 2. The policy triangle {#triangle}
+## 2. The policy triangle as a unified solution space {#framework}
+
+The policy triangle is the framework behind the unified view. It separates
+three questions that named algorithms often mix together:
+
+1. **Where is mismatch measured?** Choose an edge.
+2. **What does the mitigation do?** Choose an operator.
+3. **At what scale does it act?** Choose a geometry.
+
+A mitigation method occupies one or more coordinates in this solution space.
+Methods that look different may share coordinates; methods with similar names
+may act on different edges or have different gradient semantics.
+
+### 2.1 Three policy anchors and their edges
 
 For prompt \\(x\\), response \\(y=(y_1,\ldots,y_T)\\), and token context
 \\(h_t=(x,y_{\lt t})\\), define three conditional policies:
@@ -111,13 +144,13 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 <figure class="triangle-figure">
   <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle: behavior policy mu, proximal policy q, and current policy pi connected by B, U, and E equals B times U, alongside mask, weight, and clip operators.">
   <figcaption>
-    Figure 1. Three policy anchors, their edge ratios, and the operators that
-    can act on them. Each attachment independently chooses an edge, an operator,
-    and a token-, sequence-, or group-level geometry.
+    Figure 1. The mitigation solution space. The triangle identifies where
+    mismatch is measured; operators identify what is done; geometry identifies
+    the scale of the intervention.
   </figcaption>
 </figure>
 
-### 2.1 Bypass and factorization
+### 2.2 Direct and factorized topologies
 
 **Bypass.** Set \\(q\equiv\mu\\). Then \\(B=1\\) and \\(U=E\\). Statistical correction
 and proximal control are compressed onto one direct edge. This avoids a
@@ -132,18 +165,18 @@ approximates it by interpolating behavior and current log-probabilities to avoid
 an additional model forward pass while retaining the factorization \\(E=BU\\)
 ([Li et al., 2025](https://arxiv.org/abs/2512.06547)).
 
-## 3. Edge operators and geometry {#operators}
+### 2.3 Mitigation operators: select, reweight, or constrain
 
 For any edge \\(X\in\{B,U,E\}\\), distinguish operations by their gradient
 semantics rather than by their names in a particular implementation.
 
 <div class="table-wrap" markdown="1">
 
-| Operator | Definition | Gradient semantics | Typical role |
+| Operator | Definition | Gradient semantics | Mitigation role |
 |---|---|---|---|
-| Mask \\(\mathrm M\\) | \\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\\) | Detached | Select a token, sequence, or group using a ratio band, K2/K3 statistic, divergence, age, or metadata. |
-| Weight \\(\mathrm W\\) | \\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\\) | Detached | Change measure using raw, truncated, tapered, or self-normalized importance sampling. |
-| Shaper \\(\mathrm C\\) | Enters the loss through \\(\pi_\theta\\) | Differentiable | Constrain or reshape the current update using clipping, smooth gates, or divergence geometry. |
+| Mask \\(\mathrm M\\) | \\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\\) | Detached | **Select:** admit or reject a token, sequence, or group using a ratio band, divergence, age, or metadata. |
+| Weight \\(\mathrm W\\) | \\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\\) | Detached | **Reweight:** change measure or influence using raw, truncated, tapered, or self-normalized importance sampling. |
+| Shaper \\(\mathrm C\\) | Enters the loss through \\(\pi_\theta\\) | Differentiable | **Constrain:** reshape the current update using clipping, smooth gates, or divergence geometry. |
 
 </div>
 
@@ -167,7 +200,7 @@ sign-dependent bounds ([Yu et al., 2025](https://arxiv.org/abs/2503.14476));
 GSPO replaces the token ratio with a length-normalized sequence-geometric ratio
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
 
-### 3.1 Geometry is local to an attachment
+### 2.4 Geometry: the scale of intervention
 
 An algorithm need not have one global granularity. Each operator may
 independently use:
@@ -196,13 +229,13 @@ A concrete attachment is specified by
 \\((\text{edge},\text{operator},\text{scope},\text{statistic},
 \text{sign rule},\text{normalization})\\).
 
-## 4. Composing interventions {#composition}
+### 2.5 Combining mitigation mechanisms
 
 The factorization \\(E=BU\\) does not make interventions interchangeable. Where
 an operator is attached determines what mismatch it sees, how often it must be
 recomputed, and which bias–variance trade-off it introduces.
 
-### 4.1 Nonlinear placement matters
+#### Nonlinear placement matters
 
 <div class="equation">
 \[
@@ -226,7 +259,7 @@ Therefore, filtering total mismatch is not equivalent to filtering the behavior
 and update edges independently. A mask may nevertheless read any edge without
 forcing a downstream importance weight to consume the same edge.
 
-### 4.2 Variance control
+#### Variance control
 
 Truncated importance sampling uses \\(\widetilde w_i=\min(w_i,c)\\)
 ([Ionides, 2008](https://doi.org/10.1198/106186008X320456)). Self-normalization
@@ -245,7 +278,7 @@ Its domain—token, sequence, prompt group, or batch—is part of the algorithm.
 stabilizes mean gradient scale but is biased at finite sample size
 ([Owen, 2013](https://artowen.su.domains/mc/)).
 
-### 4.3 A bookkeeping sanity check
+#### A bookkeeping sanity check
 
 When an estimator is specifically intended to reproduce the direct
 behavior-to-current change-of-measure kernel, its unshaped limit should reduce
@@ -257,15 +290,16 @@ This is an implementation diagnostic, not a correctness or unbiasedness
 criterion. Clipping, masking, geometric aggregation, and self-normalization may
 deliberately move an estimator away from that limit.
 
-## 5. Existing methods on the triangle {#taxonomy}
+### 2.6 Mapping existing methods into the solution space {#taxonomy}
 
-The table isolates policy mismatch. It does not enumerate reward shaping,
-advantage construction, entropy bonuses, dynamic sampling, or systems
-optimizations.
+The table maps representative methods by topology and by their dominant
+solution-space coordinates. It isolates policy-mismatch mitigation and does not
+enumerate reward shaping, advantage construction, entropy bonuses, dynamic
+sampling, or systems optimizations.
 
 <div class="table-wrap" markdown="1">
 
-| Method family | Topology | Triangle placement | Interpretation |
+| Method family | Topology | Solution-space coordinate | Mitigation role |
 |---|---|---|---|
 | [PPO](https://arxiv.org/abs/1707.06347) / [GRPO](https://arxiv.org/abs/2402.03300) / [DAPO](https://arxiv.org/abs/2503.14476) | Coupled | \\(\mathrm C_{\mathrm{tok}}(E)\\) | One direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds. |
 | [CISPO](https://arxiv.org/abs/2506.13585) / [TOPR](https://arxiv.org/abs/2503.14286) | Direct PG | \\(\mathrm W_{\mathrm{tok}}(E)\\) | Detached clipped or tapered weight; gradients need not vanish outside a PPO band. |
@@ -277,7 +311,7 @@ optimizations.
 
 </div>
 
-### 5.1 Three recurring ambiguities
+#### What the mapping clarifies
 
 1. **Bypass is not “IS disabled.”** It means \\(B=1\\); the direct loss may still
    contain \\(E=U\\).
@@ -288,14 +322,15 @@ optimizations.
    \\(q\\) is frozen, whereas \\(\mathrm M(U)\\) and \\(\mathrm M(E)\\) generally
    change as \\(\pi\\) is updated.
 
-### 5.2 Relation to nearby views
+#### Relation to nearby views
 
 [Decoupled PPO](https://arxiv.org/abs/2110.00641) is the closest precursor
 because it explicitly inserts a proximal policy between behavior and current
 policies. [AReaL](https://arxiv.org/abs/2505.24298) and
 [A-3PO](https://arxiv.org/abs/2512.06547) operationalize or approximate that
-factorization for asynchronous LLM training. The triangle is broader in
-operator placement but does not prescribe a particular proximal anchor.
+factorization for asynchronous LLM training. The policy triangle broadens that
+factorization into an edge–operator–geometry solution space without prescribing
+a particular proximal anchor.
 
 The [veRL rollout-correction formulation](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)
 and [FP8-RL](https://arxiv.org/abs/2601.18150) compare practical TIS, MIS,
@@ -306,21 +341,60 @@ divergence-based shapers in the same coordinates.
 [RPG](https://arxiv.org/abs/2505.17508) and the
 [off-policy interpretation of group-relative REINFORCE](https://arxiv.org/abs/2509.24203)
 give deeper analyses of KL regularization, baselines, and data shaping. Those
-axes are intentionally outside this critic-free policy-loss taxonomy.
+axes are intentionally outside this critic-free mitigation view.
 [Jackpot](https://arxiv.org/abs/2602.06107) also lies partly outside the view
 because it changes the behavior distribution through rejection and joint
 rollout-model updates, rather than only operating on stored trajectories
 downstream.
 
-## 6. Design implications and hypotheses {#design}
+## 3. Implications and open regions in the solution space {#implications}
 
-A useful heuristic is to place detached statistical correction near the
-behavior anchor and differentiable control near the current anchor. Mismatch on
-\\(B\\) has already happened and can only be selected or reweighted. Drift on
-\\(U\\) is produced by the current optimizer and is therefore a natural target
-for a trainable trust region.
+Once mitigation methods are separated into edge, operator, and geometry, their
+design trade-offs become easier to state. The framework does not prescribe one
+best method; it shows which problem a choice is trying to solve and which
+alternatives remain available.
 
-### 6.1 Partial and piecewise behavior policies
+### 3.1 Reading mitigation choices from their coordinates
+
+| Observed issue | Relevant coordinate | Design implication |
+|---|---|---|
+| Stale rollouts or train–inference disagreement | Behavior edge \\(B\\) | Use a detached mask or weight to select or correct data that has already been generated. |
+| Drift during repeated optimizer updates | Update edge \\(U\\) | Use a differentiable shaper or dynamic trust-region test tied to the current policy. |
+| Both sources are small or cannot be separated operationally | Direct edge \\(E\\) | A coupled method is simpler, but gives up causal attribution between admission mismatch and update drift. |
+| A few tokens dominate the discrepancy | Token or distributional geometry | Use local ratio or divergence statistics rather than rejecting an entire response. |
+| Coherence of the whole response matters | Sequence geometry | Use sequence-product, geometric, worst-token, or sequence-divergence statistics according to the intended semantics. |
+
+A useful default is therefore to place detached statistical correction near the
+behavior anchor and differentiable control near the current anchor. This is a
+design heuristic, not a theorem. A direct method may be preferable when
+staleness is low, an extra proximal forward pass is expensive, or the system
+does not retain a distinct \\(q\\).
+
+### 3.2 Open regions suggested by the framework
+
+The solution space is combinatorial: an edge choice does not determine an
+operator or geometry. Existing methods occupy only some combinations. The
+following examples illustrate open regions rather than claim new named
+algorithms or expected improvements:
+
+1. **Decoupled sequence shaping:**
+   \\(\mathrm W_{\mathrm{tok}}(B)\mathrm C_{\mathrm{geo}}(U)\\). Correct rollout
+   mismatch token-wise, then constrain the update with a sequence-geometric
+   proximal ratio.
+2. **Heterogeneous two-edge mitigation:** apply entropy-adaptive admission and
+   \\(\mathrm W(B)\\) on the behavior edge, followed by a divergence-based mask
+   or shaper on \\(U\\). Each edge is treated with geometry appropriate to its
+   source.
+3. **Segment-aware asynchronous mitigation:** normalize or truncate
+   \\(\mathrm W(B_t)\\) within policy-version segments, optionally read total
+   mismatch \\(E\\) with a sequence gate, and retain \\(\mathrm C(U)\\) for the
+   current update.
+
+These coordinates are hypotheses to test. Their value here is to make the
+unexplored design choices explicit, not to imply that more elaborate
+compositions will outperform simpler ones.
+
+### 3.3 Implications for asynchronous and piecewise rollouts
 
 A resumed or interrupted trajectory may be generated by several policy
 versions. Let \\(v(t)\\) denote the version used at token \\(t\\):
@@ -333,50 +407,35 @@ B_t=\frac{q_t}{\mu_{v(t),t}}.
 \]
 </div>
 
-Stored per-token sampling log-probabilities support the observed conditional
-ratio, but do not correct unlogged prompt selection, replay selection, or
-resume-selection bias.
+The framework treats policy version as metadata attached to the behavior edge,
+not as a new topology. Stored per-token sampling log-probabilities support the
+observed conditional ratio, but do not correct unlogged prompt selection,
+replay selection, or resume-selection bias. Segment-aware normalization is
+therefore a geometry and normalization choice within the same solution space.
 
-### 6.2 Taxonomy-derived research hypotheses
-
-> **Novelty and evidence caveat.** To the best of the literature search through
-> July 2026, the exact compositions below were not found as named, evaluated
-> methods in the cited work. They are design templates, not priority or
-> effectiveness claims.
-
-1. **Decoupled sequence shaping:**
-   \\(\mathrm W_{\mathrm{tok}}(B)\mathrm C_{\mathrm{geo}}(U)\\). Correct rollout
-   mismatch token-wise, then constrain the update with a sequence-geometric
-   proximal ratio.
-2. **Heterogeneous two-edge control:** entropy-adaptive admission and
-   \\(\mathrm W(B)\\) on the behavior edge, followed by a divergence mask and
-   ordinary \\(\mathrm C(U)\\) on the update edge.
-3. **Segment-aware asynchronous correction:** normalize or truncate
-   \\(\mathrm W(B_t)\\) within policy-version segments, optionally gate the whole
-   sequence using \\(E\\), and retain \\(\mathrm C(U)\\) for the current update.
-
-### 6.3 Implementation audit
+### 3.4 Using the framework to analyze a method
 
 1. **Identify the actual behavior distribution.** Include sampling transforms,
    backend precision, and piecewise versions.
 2. **Identify the proximal anchor.** State whether it equals behavior, is a
    frozen snapshot, or is approximated.
-3. **Record every attachment.** Edge, detachment, statistic, scope, sign rule,
-   and normalization domain.
-4. **Inspect composed ratios.** When implementing behavior-to-current
-   correction, check the unshaped kernel for missing or duplicated edge factors.
-5. **Instrument raw ratios before truncation.** Report \\(B\\), \\(U\\), \\(E\\),
-   rejection, effective sample size, gradient variance, age, reward, and
-   throughput.
+3. **Locate every intervention.** Record its edge, operator, statistic,
+   geometry, sign rule, and normalization domain.
+4. **Inspect compositions.** Distinguish deliberate bias–variance choices from
+   accidental missing or duplicated ratio factors.
+5. **Measure the coordinates separately.** Report \\(B\\), \\(U\\), and \\(E\\)
+   alongside rejection, effective sample size, gradient variance, policy age,
+   reward, and throughput.
 
-## 7. Scope and conclusion {#scope}
+## 4. Limitations and conclusion {#scope}
 
-The triangle does not choose thresholds, guarantee that masking improves
+The policy triangle organizes the mitigation solution space; it does not rank
+its coordinates. It cannot choose thresholds, guarantee that masking improves
 return, repair support mismatch, or replace empirical validation. It omits
 value/advantage off-policy correction, reward-model drift, environment
 nonstationarity, and optimizer-state staleness. Sequence-product importance
-sampling can be formally exact and statistically unusable; geometric statistics
-can be stable while not being exact change-of-measure factors.
+sampling can be formally exact and statistically unusable, while geometric
+statistics can be stable without being exact change-of-measure factors.
 
 Within this scope, the behavior, proximal, and current policies provide a
 compact set of anchors. Masks select regions, detached weights change measure,
@@ -384,11 +443,12 @@ and differentiable shapers control the update; each chooses its own geometry.
 Bypass collapses the triangle, while decoupling separates exogenous rollout
 mismatch from endogenous update drift.
 
-The main value is comparative. The edge–operator–geometry representation keeps
-mismatch source, intervention semantics, and statistical scale distinct. It
-places published mechanisms in a common coordinate system and makes
-underexplored combinations easier to state without presenting them as
-established improvements.
+The main value is a clearer view of the whole solution space. The
+edge–operator–geometry representation separates **where mismatch is measured**,
+**what a mitigation mechanism does**, and **at what scale it acts**. Existing
+methods become recognizable combinations of shared choices rather than a list
+of unrelated losses. The same coordinates also expose open regions that can be
+tested without presenting them as established improvements.
 
 ### Suggested citation {#citation}
 

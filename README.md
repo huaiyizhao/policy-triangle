@@ -10,7 +10,7 @@ learning.
 - `docs/_layouts/technical.html` — Jekyll page shell
 - `docs/assets/technical.css` — responsive technical-blog styling
 - `docs/assets/policy-mismatch-intro.svg` — opening illustration
-- `docs/assets/policy-triangle-hero.svg` — detailed taxonomy figure
+- `docs/assets/policy-triangle-hero.svg` — detailed solution-space figure
 
 ## Preview
 
@@ -28,6 +28,6 @@ PDF download.
 
 ## Scope
 
-The article is a conceptual taxonomy. Its contribution is a common coordinate
-system for comparing existing mechanisms, not a new optimizer, convergence
-theorem, or empirical performance claim.
+The article offers a unified view of the mitigation solution space. Its
+contribution is a common coordinate system for comparing existing mechanisms,
+not a new optimizer, convergence theorem, or empirical performance claim.
