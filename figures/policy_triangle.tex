@@ -1,0 +1,59 @@
+\definecolor{behaviorblue}{RGB}{48,112,181}
+\definecolor{proxorange}{RGB}{220,122,0}
+\definecolor{currentgreen}{RGB}{42,137,96}
+\definecolor{clippurple}{RGB}{116,82,170}
+\definecolor{softgray}{RGB}{91,103,116}
+
+\begin{tikzpicture}[
+    x=1cm,y=1cm,
+    policy/.style={draw,rounded corners=3mm,minimum width=3.95cm,minimum height=1.08cm,align=center,very thick,fill=white,font=\large\bfseries},
+    ratio/.style={draw,rounded corners=5mm,minimum height=0.72cm,align=center,fill=white,font=\large\bfseries,inner xsep=8pt},
+    arrow/.style={-{Latex[length=3.5mm,width=2.5mm]},line width=2.4pt},
+    oplabel/.style={font=\bfseries,align=center}
+]
+    % Three policy anchors, arranged as in the graphical reference.
+    \node[policy,draw=behaviorblue] (mu) at (0,0) {\hspace{5mm}Behavior policy $\beh$};
+    \node[policy,draw=proxorange] (q) at (11,0) {\hspace{5mm}Proximal policy $\prox$};
+    \node[policy,draw=currentgreen] (pi) at (5.5,4.25) {\hspace{5mm}Current policy $\pi$};
+
+    % Edges first, so labels and policy boxes remain visually dominant.
+    \draw[arrow,draw=behaviorblue] (mu.east) -- (q.west);
+    \draw[arrow,draw=proxorange] (q.north west) -- (pi.south east);
+    \draw[arrow,draw=currentgreen] (mu.north east) -- (pi.south west);
+
+    \node[ratio,draw=behaviorblue] at (5.5,0) {$\B=\prox/\beh$};
+    \node[ratio,draw=proxorange] at (8.65,2.25) {$\U=\pi/\prox$};
+    \node[ratio,draw=currentgreen,fill=currentgreen!7] at (2.45,2.25) {$\E=\pi/\beh=\B\U$};
+
+    % Colored policy markers inspired by the supplied reference.
+    \fill[behaviorblue] ($(mu.west)+(0.42,0)$) circle (0.10);
+    \fill[proxorange] ($(q.west)+(0.42,0)$) circle (0.10);
+    \fill[currentgreen] ($(pi.west)+(0.42,0)$) circle (0.10);
+
+    % Compact operator strip.
+    \draw[softgray!35,line width=0.5pt] (-0.1,-1.45) -- (11.1,-1.45);
+    \node[font=\small,align=center] at (5.5,-1.78) {Every edge may host one of three operators; each attachment independently chooses token, sequence, or group geometry.};
+
+    % Mask glyph.
+    \draw[softgray,line width=1.2pt] (1.0,-2.65) -- (3.1,-2.65);
+    \draw[behaviorblue,rounded corners=1.5mm,line width=1.2pt,fill=white] (1.82,-2.98) rectangle (2.28,-2.32);
+    \fill[behaviorblue] (1.92,-2.48) rectangle (2.04,-2.36);
+    \fill[behaviorblue!35] (2.08,-2.48) rectangle (2.20,-2.36);
+    \fill[behaviorblue!35] (1.92,-2.68) rectangle (2.04,-2.56);
+    \fill[behaviorblue] (2.08,-2.68) rectangle (2.20,-2.56);
+    \node[oplabel] at (2.05,-3.30) {mask};
+
+    % Weight glyph.
+    \draw[softgray,line width=1.2pt] (4.45,-2.65) -- (6.55,-2.65);
+    \draw[proxorange,line width=1.2pt] (5.05,-2.82) -- (5.05,-2.48);
+    \draw[proxorange,line width=1.2pt] (5.95,-2.82) -- (5.95,-2.48);
+    \draw[proxorange,line width=1.2pt,fill=white] (5.5,-2.65) circle (0.31);
+    \fill[proxorange] (5.5,-2.65) circle (0.08);
+    \node[oplabel] at (5.5,-3.30) {weight};
+
+    % Clip glyph.
+    \draw[softgray,line width=1.2pt] (7.9,-2.65) -- (10.0,-2.65);
+    \draw[clippurple,rounded corners=1.5mm,line width=1.2pt,fill=white] (8.72,-2.98) rectangle (9.18,-2.32);
+    \draw[clippurple,line width=1.2pt] (8.81,-2.82) .. controls (8.88,-2.82) and (8.88,-2.46) .. (8.95,-2.46) .. controls (9.02,-2.46) and (9.02,-2.82) .. (9.09,-2.82);
+    \node[oplabel] at (8.95,-3.30) {clip};
+\end{tikzpicture}

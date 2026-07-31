@@ -1,0 +1,10 @@
+Use case: scientific-educational
+Asset type: graphical abstract for an arXiv paper on reinforcement learning for large language models
+Primary request: Create a rigorous, minimal scientific infographic showing a triangle of three policy anchors in LLM reinforcement learning: behavior policy mu, proximal policy q, and current policy pi. The behavior-to-proximal edge is B = q/mu, the proximal-to-current edge is U = pi/q, and the direct behavior-to-current edge is E = pi/mu = B times U. Show three small operator symbols that can attach to any edge: a binary mask, a detached scalar weight, and a differentiable clipping gate. The visual hierarchy must emphasize the three anchors, three ratios, and E = B U.
+Scene/backdrop: clean academic-paper background with ample whitespace
+Style/medium: precise scientific editorial illustration, flat vector-like geometry, publication quality, no decorative 3D objects
+Composition/framing: wide landscape, symmetric triangle centered, labels near their corresponding edges, compact operator legend below
+Color palette: restrained colorblind-safe blue, orange, green, and violet accents on a neutral background
+Text (verbatim): "Behavior policy μ"; "Proximal policy q"; "Current policy π"; "B = q / μ"; "U = π / q"; "E = π / μ = B U"; "mask"; "weight"; "clip"
+Constraints: mathematical relationships must be exact; arrows and labels must be unambiguous; suitable for reduction to a two-column paper width
+Avoid: photorealism, gradients, shadows, unnecessary icons, extra equations, watermark, logo, misspelled labels, illegible small text
