@@ -34,7 +34,7 @@ A Taxonomy of Policy Mismatch in LLM Reinforcement Learning}
 \maketitle
 
 \begin{abstract}
-Large-language-model reinforcement learning (LLM-RL) increasingly separates rollout generation from optimization, creating mismatch among the behavior policy that generated a token, the proximal policy that anchors an update, and the current policy being trained.  Existing methods use importance weights, clipping, and rejection, but are difficult to compare because similar ratios play different roles.  We organize these mechanisms with the \emph{policy triangle}: for behavior \(\beh\), proximal \(\prox\), and current \(\cur\), its edges are \(\B=\prox/\beh\), \(\U=\cur/\prox\), and \(\E=\cur/\beh=\B\U\).  An intervention is described by an edge, an operator---detached mask, detached weight, or differentiable update shaper---and a token-, sequence-, or group-level geometry.  A simple accounting check requires an unshaped behavior-to-current estimator to contain exactly one copy of \(\E\), which helps expose accidental double counting.  Rather than proposing a new optimizer, the triangle provides a common taxonomy for direct and decoupled methods, clarifies how published approaches differ, and reveals combinations that may merit empirical study.  The framework is conceptual and does not by itself establish new convergence or performance results.
+Large-language-model reinforcement learning (LLM-RL) increasingly separates rollout generation from optimization, creating mismatch among the behavior policy that generated a token, the proximal policy that anchors an update, and the current policy being trained.  Existing methods use importance weights, clipping, and rejection, but are difficult to compare because similar ratios play different roles.  We organize these mechanisms with the \emph{policy triangle}: for behavior \(\beh\), proximal \(\prox\), and current \(\cur\), its edges are \(\B=\prox/\beh\), \(\U=\cur/\prox\), and \(\E=\cur/\beh=\B\U\).  An intervention is described by an edge, an operator---detached mask, detached weight, or differentiable update shaper---and a token-, sequence-, or group-level geometry.  This representation separates mismatch source from intervention semantics across direct and decoupled methods.  Rather than proposing a new optimizer, the triangle provides a common taxonomy, clarifies how published approaches differ, and reveals combinations that may merit empirical study.  The framework is conceptual and does not by itself establish new convergence or performance results.
 \end{abstract}
 
 \section{Introduction}
@@ -45,8 +45,8 @@ Recent methods address this mismatch through a rapidly expanding vocabulary.  De
 
 Our aim is to supply a common coordinate system rather than another optimizer.  In the \emph{policy triangle}, policies rather than named objectives are the anchors, and the three edges represent rollout mismatch, current update drift, and their total.  Within this view, the paper:
 \begin{itemize}[leftmargin=*]
-    \item separates where a mismatch is measured from whether it is masked, reweighted, or used to shape a trainable update;
-    \item states a bookkeeping test for missing or duplicated behavior-to-current ratios; and
+    \item separates exogenous rollout mismatch from drift introduced by the current optimization step;
+    \item describes each intervention by its edge, gradient semantics, and statistical geometry; and
     \item classifies representative methods and identifies several untested combinations suggested by the resulting design space.
 \end{itemize}
 The result is an analytical taxonomy.  It offers notation, comparisons, and design hypotheses, but no new optimization guarantee or empirical superiority claim.
@@ -120,27 +120,10 @@ These choices admit a common gradient-kernel notation.  Let \(i\) index the unit
 where an absent operator is the multiplicative identity.  Equation~\eqref{eq:kernel} describes effective gradient coefficients rather than requiring every method to share one scalar loss.  A concrete attachment is fully specified by
 \((\text{edge},\text{operator},\text{scope},\text{statistic},\text{sign rule},\text{normalization})\).
 
-\section{Ratio Accounting}
-\label{sec:accounting}
+\section{Composing Edge Interventions}
+\label{sec:composition}
 
-The triangle supplies a simple correctness audit.  Consider the \emph{unshaped limit}: masks equal one, truncation and normalization are disabled, and clipping lies on its linear branch.
-
-\paragraph{Accounting check.}
-Call an estimator \emph{ratio complete} when its unshaped coefficient equals the direct behavior-to-current ratio exactly once.  A direct construction then consumes \(\E\) once, while a factorized construction consumes \(\B\) and \(\U\) once each:
-\begin{equation}
-    K^0=\E=\B\U.
-    \label{eq:conservation}
-\end{equation}
-This is bookkeeping rather than a new theorem: the sampled-action change of measure is \(\cur/\beh=\E\), and inserting \(\prox\) gives \((\prox/\beh)(\cur/\prox)=\B\U\).  An extra factor changes the measure; an omitted factor leaves an edge uncorrected.
-
-Consequently, \(\Shape(\E)\), \(\Weight(\E)\), \(\Weight(\B)\Shape(\U)\), and \(\Weight(\B)\Weight(\U)\) are ratio complete in their linear limits.  In contrast,
-\begin{equation}
-    \Weight(\E)\Shape(\E)\leadsto\E^2,qquad
-    \Weight(\E)\Shape(\U)\leadsto\B\U^2,
-\end{equation}
-which double-count ratios.  This explains why bypass PPO must not multiply an additional \(\Weight(\E)\): its clipped loss already carries \(\E\).
-
-Ratio completeness is deliberately narrower than unbiasedness.  A ratio-complete estimator can still be biased by clipping, masking, token-level approximation, or self-normalization, and it may have unusable variance.  The check only detects a structural class of implementation errors: consuming an edge twice or omitting it before any intended bias--variance transformation is applied.
+The factorization \(\E=\B\U\) does not make interventions interchangeable.  Where an operator is attached determines what mismatch it sees, how often it must be recomputed, and which bias--variance trade-off it introduces.
 
 \paragraph{Nonlinear placement matters.}
 Although \(\E=\B\U\), nonlinear operators do not distribute:
@@ -162,6 +145,14 @@ TIS replaces \(w_i\) by \(\widetilde w_i=\min(w_i,c)\) \citep{ionides2008tis}.  
     \label{eq:snis}
 \end{equation}
 It stabilizes mean gradient scale but is biased at finite sample size \citep{owen2013mc}.  Its domain---token, sequence, prompt group, or batch---is part of the algorithm.  Sign-conditioned thresholds, as in DAPO and TOPR, are likewise operator parameters rather than new topology \citep{yu2025dapo,leroux2025topr}.
+
+\paragraph{Bookkeeping sanity check.}
+When an estimator is specifically intended to reproduce the direct behavior-to-current change-of-measure kernel, consider its \emph{unshaped limit}: masks equal one, truncation and normalization are disabled, and clipping lies on its linear branch.  That limit should reduce to
+\begin{equation}
+    K^0=\E=\B\U.
+    \label{eq:conservation}
+\end{equation}
+This conditional check can catch accidental duplication: \(\Weight(\E)\Shape(\E)\) reduces to \(\E^2\), whereas \(\Weight(\B)\Shape(\U)\) reduces to \(\B\U\).  It is an implementation diagnostic, not a correctness or unbiasedness criterion; clipping, masking, geometric aggregation, and self-normalization may deliberately move an estimator away from that limit.
 
 \section{Existing Methods on the Triangle}
 \label{sec:methods}
@@ -203,7 +194,7 @@ DPPO / TRM \citep{qi2026dppo,li2025trm}
 
 The triangle clarifies three recurring ambiguities.  First, bypass is not ``IS disabled'': \(\B=1\) and the direct loss still contains \(\E=\U\).  Second, PPO and GSPO are not pre-filters.  Their clipped branches can yield zero gradient in an advantage-dependent direction, whereas a mask rejects independently of the update direction.  Third, a decoupled filter may read any raw edge.  \(\Mask(\B)\) is a static admission test when \(\prox\) is frozen; \(\Mask(\U)\) or \(\Mask(\E)\) is generally dynamic because \(\cur\) changes.  Recent diagnostics confirm that backend mismatch and optimization drift can interact rather than behave as one static error source \citep{zhong2026tim,zhang2026beyondprecision,zhao2026estr}.
 
-Methods omitted from the table also obtain simple signatures.  ReMax and RLOO are direct policy-gradient baselines with no PPO shaper \citep{li2023remax,ahmadian2024rloo}; adding off-policy data requires an explicit \(\Weight(\E)\) or a factorized alternative.  Conversely, using a separate \(\Weight(\E)\) with an ordinary direct PPO loss is not a more complete correction---it is the \(\E^2\) error identified in Section~\ref{sec:accounting}.  This distinction is especially important in configurable systems where rollout correction and policy loss are selected independently.
+Methods omitted from the table also obtain simple signatures.  ReMax and RLOO are direct policy-gradient baselines with no PPO shaper \citep{li2023remax,ahmadian2024rloo}; adding off-policy data requires an explicit \(\Weight(\E)\) or a factorized alternative.  Conversely, using a separate \(\Weight(\E)\) with an ordinary direct PPO loss can accidentally introduce the \(\E^2\) configuration described in Section~\ref{sec:composition}.  This distinction is especially important in configurable systems where rollout correction and policy loss are selected independently.
 
 Jackpot illustrates a boundary of this loss-centered representation: its rejection sampler and jointly updated rollout model actively change the behavior distribution before a trajectory reaches the learner \citep{chen2026jackpot}.  The triangle can label the resulting behavior policy and downstream correction, but it does not describe the complete sampling-control loop.  Likewise, RPG's treatment of KL-regularized objectives and group-relative REINFORCE's analysis of baselines and data shaping cover axes intentionally outside the present policy-mismatch taxonomy \citep{zhang2025rpg,yao2025offpolicy}.
 
@@ -233,13 +224,13 @@ To the best of our literature search through July 2026, the following exact comb
 \end{enumerate}
 A mask based only on frozen \(\B\) can be computed once when a batch enters training, whereas a mask on \(\U\) or \(\E\) must generally be recomputed as \(\cur\) changes.
 
-For implementation, we recommend a five-step audit: (i) identify the actual token-level behavior distribution, including sampling transforms; (ii) identify the proximal anchor; (iii) record edge, detachment, statistic, geometry, sign dependence, and normalization for every operator; (iv) verify that the unshaped kernel contains exactly one \(\E\); and (v) compute filter statistics from raw ratios before truncation hides the tail.  The audit distinguishes an intentional bias--variance trade-off from a structural \(\E^2\) error.
+For implementation, we recommend a five-step audit: (i) identify the actual token-level behavior distribution, including sampling transforms; (ii) identify the proximal anchor; (iii) record edge, detachment, statistic, geometry, sign dependence, and normalization for every operator; (iv) when implementing behavior-to-current correction, inspect the unshaped kernel for missing or duplicated edge factors; and (v) compute filter statistics from raw ratios before truncation hides the tail.  This separates intentional bias--variance choices from accidental composition errors.
 
 The taxonomy does not choose thresholds, guarantee that masking improves return, or repair support mismatch.  It omits reward-model drift, environment nonstationarity, and optimizer-state staleness.  Sequence-product IS can be formally exact and statistically unusable, while geometric statistics are stable but not exact change-of-measure factors.  Empirical validation should instrument \(\B\), \(\U\), and \(\E\) separately and report reward, effective sample size, rejection, gradient variance, policy age, and throughput.
 
 \section{Conclusion}
 
-The behavior, proximal, and current policies form a triangle whose edges satisfy \(\E=\B\U\).  Masks select regions, detached weights change measure, and differentiable shapers control updates; each operator chooses its own geometry.  Bypass collapses the triangle, while decoupling separates exogenous rollout mismatch from endogenous update drift.  Requiring the unshaped kernel to recover exactly one copy of \(\E\) provides a compact test for missing or double-counted correction.  The main value of the triangle is comparative: it places many LLM-RL mechanisms in one coordinate system and makes underexplored, testable combinations easier to state without presenting them as established improvements.
+The behavior, proximal, and current policies form a triangle whose edges satisfy \(\E=\B\U\).  Masks select regions, detached weights change measure, and differentiable shapers control updates; each operator chooses its own geometry.  Bypass collapses the triangle, while decoupling separates exogenous rollout mismatch from endogenous update drift.  The main value of the triangle is comparative: its edge--operator--geometry representation keeps mismatch source, intervention semantics, and statistical scale distinct, places many LLM-RL mechanisms in one coordinate system, and makes underexplored combinations easier to state without presenting them as established improvements.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

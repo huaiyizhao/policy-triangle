@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760" role="img" aria-labelledby="intro-title intro-desc">
+  <title id="intro-title">One sample passes through three versions of an AI model</title>
+  <desc id="intro-desc">A response is written by the behavior model, reaches a frozen starting-point model, and is learned from by a changing current model. The policy triangle separates the two shifts and tracks their combined mismatch.</desc>
+
+  <defs>
+    <pattern id="intro-dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#dfe4e7" opacity="0.7"/>
+    </pattern>
+    <marker id="flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7b858f"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="760" fill="#f5f1e8"/>
+  <rect width="1440" height="760" fill="url(#intro-dots)"/>
+  <rect x="36" y="36" width="1368" height="688" rx="22" fill="#fffdf9" stroke="#d7d3ca" stroke-width="2"/>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="80" y="90" fill="#59636e" font-size="16" font-weight="700" letter-spacing="2.8">WHY POLICY MISMATCH HAPPENS</text>
+    <text x="80" y="143" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="43">One sample, three versions of the model</text>
+    <text x="80" y="180" fill="#59636e" font-size="21">The model that wrote an answer is not always the model learning from it.</text>
+  </g>
+
+  <!-- Flow line -->
+  <path d="M350 354 C415 318 465 318 528 354" fill="none" stroke="#7b858f" stroke-width="4" stroke-linecap="round" stroke-dasharray="7 11" marker-end="url(#flow-arrow)"/>
+  <path d="M790 354 C855 318 905 318 968 354" fill="none" stroke="#7b858f" stroke-width="4" stroke-linecap="round" stroke-dasharray="7 11" marker-end="url(#flow-arrow)"/>
+
+  <!-- Stage 1 -->
+  <g transform="translate(80 226)">
+    <rect width="300" height="304" rx="18" fill="#eef6fb" stroke="#2878ad" stroke-width="3"/>
+    <text x="24" y="40" fill="#2878ad" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">1 · COLLECT</text>
+
+    <g transform="translate(24 64)">
+      <rect width="116" height="106" rx="13" fill="#ffffff" stroke="#2878ad" stroke-width="2"/>
+      <rect x="22" y="22" width="72" height="50" rx="8" fill="#dcecf6"/>
+      <circle cx="45" cy="47" r="5" fill="#2878ad"/>
+      <circle cx="71" cy="47" r="5" fill="#2878ad"/>
+      <path d="M44 62 C53 70 64 70 73 62" fill="none" stroke="#2878ad" stroke-width="3" stroke-linecap="round"/>
+      <line x1="58" y1="13" x2="58" y2="22" stroke="#2878ad" stroke-width="3"/>
+      <circle cx="58" cy="10" r="4" fill="#2878ad"/>
+      <line x1="34" y1="84" x2="82" y2="84" stroke="#2878ad" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g transform="translate(124 87)">
+      <path d="M0 12 Q0 0 12 0 H132 Q144 0 144 12 V61 Q144 73 132 73 H39 L22 91 L23 73 H12 Q0 73 0 61 Z" fill="#ffffff" stroke="#b8d7ea" stroke-width="2"/>
+      <circle cx="28" cy="36" r="6" fill="#2878ad"/>
+      <circle cx="51" cy="36" r="6" fill="#83b9d8"/>
+      <circle cx="74" cy="36" r="6" fill="#b8d7ea"/>
+      <line x1="26" y1="55" x2="112" y2="55" stroke="#c6dce8" stroke-width="5" stroke-linecap="round"/>
+    </g>
+
+    <text x="24" y="205" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">Behavior model μ</text>
+    <text x="24" y="237" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="18">writes the response</text>
+    <line x1="24" y1="260" x2="276" y2="260" stroke="#bfd8e7"/>
+    <text x="24" y="284" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="15">A snapshot from the past</text>
+  </g>
+
+  <!-- Stage 2 -->
+  <g transform="translate(520 226)">
+    <rect width="300" height="304" rx="18" fill="#fff7ee" stroke="#c66d0a" stroke-width="3"/>
+    <text x="24" y="40" fill="#c66d0a" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">2 · ANCHOR</text>
+
+    <g transform="translate(82 61)">
+      <rect width="136" height="118" rx="14" fill="#ffffff" stroke="#c66d0a" stroke-width="2"/>
+      <rect x="26" y="23" width="84" height="58" rx="9" fill="#f9e3c8"/>
+      <circle cx="53" cy="51" r="5" fill="#c66d0a"/>
+      <circle cx="83" cy="51" r="5" fill="#c66d0a"/>
+      <path d="M51 67 H85" fill="none" stroke="#c66d0a" stroke-width="3" stroke-linecap="round"/>
+      <line x1="40" y1="94" x2="96" y2="94" stroke="#c66d0a" stroke-width="3" stroke-linecap="round"/>
+      <g transform="translate(101 7)" stroke="#c66d0a" stroke-width="2.4" stroke-linecap="round">
+        <line x1="0" y1="12" x2="28" y2="12"/>
+        <line x1="14" y1="0" x2="14" y2="24"/>
+        <line x1="4" y1="3" x2="24" y2="21"/>
+        <line x1="24" y1="3" x2="4" y2="21"/>
+      </g>
+    </g>
+
+    <text x="24" y="205" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">Proximal model q</text>
+    <text x="24" y="237" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="18">marks where learning starts</text>
+    <line x1="24" y1="260" x2="276" y2="260" stroke="#efd5b6"/>
+    <text x="24" y="284" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="15">Frozen during the update</text>
+  </g>
+
+  <!-- Stage 3 -->
+  <g transform="translate(960 226)">
+    <rect width="400" height="304" rx="18" fill="#eef8f4" stroke="#19845d" stroke-width="3"/>
+    <text x="24" y="40" fill="#19845d" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">3 · UPDATE</text>
+
+    <g transform="translate(24 66)">
+      <rect width="116" height="106" rx="13" fill="#ffffff" stroke="#19845d" stroke-width="2"/>
+      <rect x="22" y="22" width="72" height="50" rx="8" fill="#d8eee6"/>
+      <circle cx="45" cy="47" r="5" fill="#19845d"/>
+      <circle cx="71" cy="47" r="5" fill="#19845d"/>
+      <path d="M44 62 C53 70 64 70 73 62" fill="none" stroke="#19845d" stroke-width="3" stroke-linecap="round"/>
+      <line x1="58" y1="13" x2="58" y2="22" stroke="#19845d" stroke-width="3"/>
+      <circle cx="58" cy="10" r="4" fill="#19845d"/>
+      <line x1="34" y1="84" x2="82" y2="84" stroke="#19845d" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g transform="translate(162 69)">
+      <path d="M8 84 C34 74 43 42 67 48 C91 54 97 21 127 16" fill="none" stroke="#19845d" stroke-width="5" stroke-linecap="round"/>
+      <path d="M114 10 L130 15 L123 31" fill="none" stroke="#19845d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="8" cy="84" r="7" fill="#ffffff" stroke="#19845d" stroke-width="3"/>
+      <circle cx="67" cy="48" r="7" fill="#ffffff" stroke="#19845d" stroke-width="3"/>
+    </g>
+
+    <text x="24" y="205" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">Current model π</text>
+    <text x="24" y="237" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="18">keeps changing as it learns</text>
+    <line x1="24" y1="260" x2="376" y2="260" stroke="#bfded2"/>
+    <text x="24" y="284" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="15">May drift before reusing the sample</text>
+  </g>
+
+  <!-- Human-language mismatch labels -->
+  <g transform="translate(390 280)">
+    <rect width="120" height="38" rx="19" fill="#ffffff" stroke="#2878ad" stroke-width="2"/>
+    <text x="60" y="25" text-anchor="middle" fill="#205f8b" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700">already differs</text>
+  </g>
+  <g transform="translate(830 280)">
+    <rect width="120" height="38" rx="19" fill="#ffffff" stroke="#c66d0a" stroke-width="2"/>
+    <text x="60" y="25" text-anchor="middle" fill="#8f4c05" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700">changes again</text>
+  </g>
+
+  <!-- Takeaway -->
+  <g transform="translate(80 566)">
+    <rect width="1280" height="116" rx="15" fill="#17202a"/>
+    <g transform="translate(26 26)">
+      <circle cx="32" cy="32" r="31" fill="#243743" stroke="#6d8798" stroke-width="2"/>
+      <path d="M17 43 L32 18 L47 43 Z" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="17" cy="43" r="4" fill="#2878ad"/>
+      <circle cx="32" cy="18" r="4" fill="#19845d"/>
+      <circle cx="47" cy="43" r="4" fill="#c66d0a"/>
+    </g>
+    <text x="104" y="49" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="25">The policy triangle separates where mismatch appears—</text>
+    <text x="104" y="80" fill="#aeb9c3" font-family="Arial, Helvetica, sans-serif" font-size="17">from what a method does about it, at the scale where the decision is made.</text>
+
+    <g transform="translate(930 30)" font-family="Arial, Helvetica, sans-serif">
+      <text x="0" y="17" fill="#80b9de" font-size="14" font-weight="700" letter-spacing="1.4">EDGE</text>
+      <text x="0" y="48" fill="#ffffff" font-size="17">where?</text>
+      <line x1="88" y1="0" x2="88" y2="62" stroke="#536571"/>
+      <text x="108" y="17" fill="#e5a960" font-size="14" font-weight="700" letter-spacing="1.4">OPERATOR</text>
+      <text x="108" y="48" fill="#ffffff" font-size="17">what?</text>
+      <line x1="218" y1="0" x2="218" y2="62" stroke="#536571"/>
+      <text x="238" y="17" fill="#79c5aa" font-size="14" font-weight="700" letter-spacing="1.4">GEOMETRY</text>
+      <text x="238" y="48" fill="#ffffff" font-size="17">how broad?</text>
+    </g>
+  </g>
+</svg>

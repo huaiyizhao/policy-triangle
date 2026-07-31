@@ -8,6 +8,10 @@ author: Huaiyi Zhao
 date: 2026-07-31
 ---
 
+<figure class="hero-figure">
+  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="A response passes through three versions of an AI model: the behavior model writes it, the proximal model marks the start of learning, and the current model changes while learning. The policy triangle tracks the resulting mismatch.">
+</figure>
+
 <div class="abstract" markdown="1">
 
 ## Abstract
@@ -20,10 +24,10 @@ rejection, but are difficult to compare because similar ratios play different
 roles. This note organizes these mechanisms with the policy triangle:
 \\(B=q/\mu\\), \\(U=\pi_\theta/q\\), and \\(E=\pi_\theta/\mu=BU\\). An intervention is
 described by an edge, an operator—detached mask, detached weight, or
-differentiable update shaper—and its geometry. A simple accounting check
-requires an unshaped behavior-to-current estimator to contain exactly one copy
-of \\(E\\). The result is a common taxonomy for direct and decoupled methods, not
-a new optimizer or convergence claim.
+differentiable update shaper—and its token-, sequence-, or group-level
+geometry. The result is a common taxonomy that separates mismatch source from
+intervention semantics across direct and decoupled methods, not a new optimizer
+or convergence claim.
 
 </div>
 
@@ -105,11 +109,11 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 | Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch. |
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/policy-triangle.svg' | relative_url }}" alt="Behavior, proximal, and current policies connected by B, U, and E equals B times U.">
+  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle: behavior policy mu, proximal policy q, and current policy pi connected by B, U, and E equals B times U, alongside mask, weight, and clip operators.">
   <figcaption>
-    Figure 1. Three policy anchors and their edge ratios. The colors identify
-    mismatch sources only; operators and geometry are chosen independently on
-    each edge.
+    Figure 1. Three policy anchors, their edge ratios, and the operators that
+    can act on them. Each attachment independently chooses an edge, an operator,
+    and a token-, sequence-, or group-level geometry.
   </figcaption>
 </figure>
 
@@ -192,37 +196,11 @@ A concrete attachment is specified by
 \\((\text{edge},\text{operator},\text{scope},\text{statistic},
 \text{sign rule},\text{normalization})\\).
 
-## 4. Ratio accounting {#accounting}
+## 4. Composing interventions {#composition}
 
-Consider the unshaped limit: all masks equal one, truncation and normalization
-are disabled, and every shaper is on its linear branch.
-
-> **Accounting check.** If an estimator is intended to reproduce a direct
-> behavior-to-current policy-gradient kernel, its unshaped coefficient should
-> contain exactly one copy of \\(E=\pi/\mu=BU\\).
-
-<div class="equation">
-\[
-K^0=E=BU.
-\tag{4}
-\]
-</div>
-
-This is bookkeeping rather than a new theorem. Inserting \\(q\\) into \\(\pi/\mu\\)
-gives \\((q/\mu)(\pi/q)=BU\\). An extra ratio changes the measure; an omitted ratio
-leaves an edge uncorrected.
-
-| Status | Construction | Unshaped coefficient |
-|---|---|---|
-| Valid direct | \\(\mathrm C(E)\\) or \\(\mathrm W(E)\\) | \\(E\\) |
-| Valid factorization | \\(\mathrm W(B)\mathrm C(U)\\) | \\(BU\\) |
-| Double counted | \\(\mathrm W(E)\mathrm C(E)\\) | \\(E^2\\) |
-| Mixed incorrectly | \\(\mathrm W(E)\mathrm C(U)\\) | \\(BU^2\\) |
-
-Ratio completeness is narrower than unbiasedness. A ratio-complete estimator
-can still be biased by clipping, masking, token-level approximation, geometric
-aggregation, or self-normalization. The check only detects missing and
-duplicated edge factors before those deliberate bias–variance transformations.
+The factorization \\(E=BU\\) does not make interventions interchangeable. Where
+an operator is attached determines what mismatch it sees, how often it must be
+recomputed, and which bias–variance trade-off it introduces.
 
 ### 4.1 Nonlinear placement matters
 
@@ -231,7 +209,7 @@ duplicated edge factors before those deliberate bias–variance transformations.
 \operatorname{clip}(E)\ne
 \operatorname{clip}(B)\operatorname{clip}(U),\qquad
 \mathrm M(E)\ne\mathrm M(B)\mathrm M(U).
-\tag{5}
+\tag{4}
 \]
 </div>
 
@@ -240,7 +218,7 @@ For \\(k_3(x)=x-1-\log x\\),
 <div class="equation">
 \[
 k_3(BU)=k_3(B)+k_3(U)+(B-1)(U-1).
-\tag{6}
+\tag{5}
 \]
 </div>
 
@@ -259,13 +237,25 @@ is orthogonal:
 \overline w_i=
 \frac{\widetilde w_i}
 {\sum_j M_j\widetilde w_j/\sum_jM_j}.
-\tag{7}
+\tag{6}
 \]
 </div>
 
 Its domain—token, sequence, prompt group, or batch—is part of the algorithm. It
 stabilizes mean gradient scale but is biased at finite sample size
 ([Owen, 2013](https://artowen.su.domains/mc/)).
+
+### 4.3 A bookkeeping sanity check
+
+When an estimator is specifically intended to reproduce the direct
+behavior-to-current change-of-measure kernel, its unshaped limit should reduce
+to \\(E=BU\\). This conditional check can catch accidental duplication: for
+example, \\(\mathrm W(E)\mathrm C(E)\\) reduces to \\(E^2\\), whereas the factorized
+construction \\(\mathrm W(B)\mathrm C(U)\\) reduces to \\(BU\\).
+
+This is an implementation diagnostic, not a correctness or unbiasedness
+criterion. Clipping, masking, geometric aggregation, and self-normalization may
+deliberately move an estimator away from that limit.
 
 ## 5. Existing methods on the triangle {#taxonomy}
 
@@ -339,7 +329,7 @@ versions. Let \\(v(t)\\) denote the version used at token \\(t\\):
 \[
 \mu(y\mid x)=\prod_t\mu_{v(t)}(y_t\mid h_t),\qquad
 B_t=\frac{q_t}{\mu_{v(t),t}}.
-\tag{8}
+\tag{7}
 \]
 </div>
 
@@ -373,8 +363,8 @@ resume-selection bias.
    frozen snapshot, or is approximated.
 3. **Record every attachment.** Edge, detachment, statistic, scope, sign rule,
    and normalization domain.
-4. **Check the unshaped kernel.** Verify that intended behavior-to-current
-   correction contains exactly one \\(E\\).
+4. **Inspect composed ratios.** When implementing behavior-to-current
+   correction, check the unshaped kernel for missing or duplicated edge factors.
 5. **Instrument raw ratios before truncation.** Report \\(B\\), \\(U\\), \\(E\\),
    rejection, effective sample size, gradient variance, age, reward, and
    throughput.
@@ -394,10 +384,11 @@ and differentiable shapers control the update; each chooses its own geometry.
 Bypass collapses the triangle, while decoupling separates exogenous rollout
 mismatch from endogenous update drift.
 
-The main value is comparative. Requiring the unshaped kernel to recover one copy
-of \\(E=BU\\) exposes missing or duplicated correction, and the
-edge–operator–geometry representation makes published mechanisms and
-underexplored combinations easier to state in the same language.
+The main value is comparative. The edge–operator–geometry representation keeps
+mismatch source, intervention semantics, and statistical scale distinct. It
+places published mechanisms in a common coordinate system and makes
+underexplored combinations easier to state without presenting them as
+established improvements.
 
 ### Suggested citation {#citation}
 

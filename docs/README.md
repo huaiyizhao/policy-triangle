@@ -11,8 +11,8 @@ responsibility:
 
 - **_layouts/technical.html** — page shell, navigation, metadata, and MathJax
 - **assets/technical.css** — restrained technical styling
-- **assets/policy-triangle.svg** — editable web figure
-- **policy-triangle.pdf** — downloadable paper
+- **assets/policy-mismatch-intro.svg** — accessible opening illustration
+- **assets/policy-triangle-hero.svg** — detailed policy-triangle figure
 
 GitHub Pages runs Jekyll automatically. If Jekyll is installed locally, preview
 from the repository root with:
@@ -27,6 +27,6 @@ from the repository root with:
 4. Select the target branch and the **/docs** folder.
 5. Save. GitHub will compile **docs/index.md** into the public index page.
 
-The article presents the full technical note rather than a promotional landing
-page. Math formulas use MathJax from jsDelivr. Only the PDF is offered for
-download; the LaTeX source archive is not published on the website.
+The site presents the complete work as a standalone technical blog. Math
+formulas use MathJax from jsDelivr; figures are responsive SVG assets. No PDF
+download or LaTeX source archive is published on the website.

@@ -37,7 +37,7 @@
 </head>
 
 <body>
-  <a class="skip" href="#content">Skip to paper</a>
+  <a class="skip" href="#content">Skip to article</a>
 
   <header class="topbar">
     <div class="topbar-inner">
@@ -45,7 +45,6 @@
       <nav class="top-links" aria-label="Document links">
         <a href="#taxonomy">Method taxonomy</a>
         <a href="#references">References</a>
-        <a class="download" href="{{ '/policy-triangle.pdf' | relative_url }}">PDF</a>
       </nav>
     </div>
   </header>
@@ -57,22 +56,22 @@
         <li><a href="#motivation">1. Motivation</a></li>
         <li><a href="#triangle">2. Policy triangle</a></li>
         <li><a href="#operators">3. Edge operators</a></li>
-        <li><a href="#accounting">4. Ratio accounting</a></li>
+        <li><a href="#composition">4. Composing interventions</a></li>
         <li><a href="#taxonomy">5. Existing methods</a></li>
         <li><a href="#design">6. Design hypotheses</a></li>
         <li><a href="#scope">7. Scope and conclusion</a></li>
         <li><a href="#references">References</a></li>
       </ol>
       <div class="toc-meta">
-        Technical note<br>
-        6-page PDF · 1 figure<br>
+        Technical blog<br>
+        7 sections · 2 illustrations<br>
         Updated {{ page.date | date: "%B %-d, %Y" }}
       </div>
     </aside>
 
     <article id="content">
       <header class="paper-header">
-        <p class="status">Technical note · working paper</p>
+        <p class="status">Technical blog · research note</p>
         <h1>
           {{ page.short_title }}
           <span class="subtitle">{{ page.subtitle }}</span>
@@ -83,7 +82,6 @@
           <a href="{{ site.url }}{{ site.baseurl }}/">Project page</a>
         </p>
         <div class="paper-actions">
-          <a href="{{ '/policy-triangle.pdf' | relative_url }}">Download PDF</a>
           <a href="#citation">Citation</a>
         </div>
       </header>
@@ -102,4 +100,3 @@
   </div>
 </body>
 </html>
-

@@ -97,13 +97,6 @@ pre,
 
 .top-links a { text-decoration: none; }
 
-.top-links .download {
-  padding: 0.35rem 0.62rem;
-  border: 1px solid var(--line-dark);
-  border-radius: 4px;
-  color: var(--ink);
-}
-
 .page {
   width: min(calc(100% - 2rem), var(--layout));
   margin: 0 auto;
@@ -221,6 +214,17 @@ h1 {
 
 .paper-content > blockquote:first-child {
   margin-top: 2.5rem;
+}
+
+.hero-figure {
+  margin: 2.5rem 0 0;
+}
+
+.hero-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 
 .paper-content section,
@@ -405,9 +409,13 @@ pre {
 
 @media (max-width: 680px) {
   body { font-size: 15px; }
-  .top-links a:not(.download) { display: none; }
+  .top-links { display: none; }
   article { padding-top: 2.8rem; }
   .triangle-figure { padding: 0.4rem; }
+  .hero-figure {
+    width: calc(100% + 1rem);
+    margin-left: -0.5rem;
+  }
   .equation { font-size: 0.88em; }
 }
 
