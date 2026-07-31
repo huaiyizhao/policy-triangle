@@ -274,16 +274,17 @@ p { margin: 0.9rem 0 0; }
   font-size: 0.94rem;
 }
 
-.equation,
-.MathJax_Display {
-  overflow-x: auto;
-}
-
 .equation {
   margin: 1.35rem 0;
   padding: 0.7rem 1rem;
   border-block: 1px solid var(--line);
   text-align: center;
+  overflow: visible;
+}
+
+.equation mjx-container[display="true"] {
+  max-width: 100%;
+  margin-inline: auto !important;
 }
 
 .triangle-figure {
@@ -407,6 +408,7 @@ pre {
   .top-links a:not(.download) { display: none; }
   article { padding-top: 2.8rem; }
   .triangle-figure { padding: 0.4rem; }
+  .equation { font-size: 0.88em; }
 }
 
 @media print {
@@ -417,4 +419,3 @@ pre {
   article { padding: 0; }
   a { color: inherit; text-decoration: none; }
 }
-
