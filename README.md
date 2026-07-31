@@ -8,7 +8,10 @@ This directory contains a concise arXiv-oriented LaTeX manuscript for the policy
 - `references.bib` — bibliography
 - `figures/policy_triangle.tex` — deterministic TikZ figure based on the three-color triangular reference layout
 - `figures/imagegen-prompt.txt` — prepared prompt for an optional generated graphical abstract
-- `docs/index.html` — standalone GitHub Pages blog with an inline SVG figure and responsive layout
+- `docs/index.md` — editable Markdown source for the GitHub Pages technical note
+- `docs/_layouts/technical.html` — Jekyll page shell
+- `docs/assets/technical.css` — technical-note styling
+- `docs/assets/policy-triangle.svg` — editable web figure
 - `Makefile` — local build commands
 
 ## Build
@@ -32,9 +35,11 @@ The manuscript has been compiled with Tectonic and visually inspected page by pa
 
 ## Blog
 
-The publishable web article lives in `docs/`. Preview it locally with:
+The publishable web article lives in `docs/`. Edit `docs/index.md`; GitHub Pages
+uses Jekyll to generate the final HTML automatically. With Jekyll installed,
+preview locally with:
 
-    python3 -m http.server 8000 --directory docs
+    jekyll serve --source docs
 
 For GitHub Pages, select **Deploy from a branch** and use the repository's
 `/docs` directory as the publishing source.

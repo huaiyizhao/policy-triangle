@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="{{ page.description | default: site.description }}">
+  <link rel="canonical" href="{{ site.url }}{{ site.baseurl }}/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="{{ page.title }}">
+  <meta property="og:description" content="{{ page.description | default: site.description }}">
+  <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}/">
+  <title>{{ page.title }} — {{ page.author }}</title>
+  <link rel="stylesheet" href="{{ '/assets/technical.css' | relative_url }}">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      chtml: { scale: 0.96 }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "{{ page.title }}: {{ page.subtitle }}",
+    "author": {"@type": "Person", "name": "{{ page.author }}"},
+    "datePublished": "{{ page.date | date: '%Y-%m-%d' }}",
+    "url": "{{ site.url }}{{ site.baseurl }}/"
+  }
+  </script>
+</head>
+
+<body>
+  <a class="skip" href="#content">Skip to paper</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="site-title" href="{{ site.baseurl }}/">{{ page.short_title }}</a>
+      <nav class="top-links" aria-label="Document links">
+        <a href="#taxonomy">Method taxonomy</a>
+        <a href="#references">References</a>
+        <a class="download" href="{{ '/policy-triangle.pdf' | relative_url }}">PDF</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="page">
+    <aside class="toc" aria-label="Table of contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#motivation">1. Motivation</a></li>
+        <li><a href="#triangle">2. Policy triangle</a></li>
+        <li><a href="#operators">3. Edge operators</a></li>
+        <li><a href="#accounting">4. Ratio accounting</a></li>
+        <li><a href="#taxonomy">5. Existing methods</a></li>
+        <li><a href="#design">6. Design hypotheses</a></li>
+        <li><a href="#scope">7. Scope and conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ol>
+      <div class="toc-meta">
+        Technical note<br>
+        6-page PDF · 1 figure<br>
+        Updated {{ page.date | date: "%B %-d, %Y" }}
+      </div>
+    </aside>
+
+    <article id="content">
+      <header class="paper-header">
+        <p class="status">Technical note · working paper</p>
+        <h1>
+          {{ page.short_title }}
+          <span class="subtitle">{{ page.subtitle }}</span>
+        </h1>
+        <p class="author-line">
+          <strong>{{ page.author }}</strong> ·
+          {{ page.date | date: "%B %-d, %Y" }} ·
+          <a href="{{ site.url }}{{ site.baseurl }}/">Project page</a>
+        </p>
+        <div class="paper-actions">
+          <a href="{{ '/policy-triangle.pdf' | relative_url }}">Download PDF</a>
+          <a href="#citation">Citation</a>
+        </div>
+      </header>
+
+      <main class="paper-content">
+        {{ content }}
+      </main>
+
+      <footer class="paper-footer">
+        <p>
+          OpenAI's GPT assisted with drafting and language editing. Huaiyi Zhao
+          is responsible for the analysis and all claims.
+        </p>
+      </footer>
+    </article>
+  </div>
+</body>
+</html>
+

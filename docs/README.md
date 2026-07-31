@@ -4,13 +4,20 @@ This directory is a standalone GitHub Pages site for:
 
 > **The Policy Triangle: A Taxonomy of Policy Mismatch in LLM Reinforcement Learning**
 
-## Preview locally
+## Edit the article
 
-From the paper repository, run:
+Edit **index.md** for all technical content. The other files are separated by
+responsibility:
 
-    python3 -m http.server 8000 --directory docs
+- **_layouts/technical.html** — page shell, navigation, metadata, and MathJax
+- **assets/technical.css** — restrained technical styling
+- **assets/policy-triangle.svg** — editable web figure
+- **policy-triangle.pdf** — downloadable paper
 
-Then open <http://localhost:8000>.
+GitHub Pages runs Jekyll automatically. If Jekyll is installed locally, preview
+from the repository root with:
+
+    jekyll serve --source docs
 
 ## Publish with GitHub Pages
 
@@ -18,10 +25,8 @@ Then open <http://localhost:8000>.
 2. Open **Settings → Pages**.
 3. Under **Build and deployment**, select **Deploy from a branch**.
 4. Select the target branch and the **/docs** folder.
-5. Save. GitHub will publish **docs/index.html**.
+5. Save. GitHub will compile **docs/index.md** into the public index page.
 
-The page is framework-free and requires no build step. It presents the full
-technical note rather than a promotional landing page. Math formulas use
-MathJax from jsDelivr; the restrained layout and SVG policy triangle are
-embedded in **index.html**. The PDF and LaTeX source archive are also included
-for direct download.
+The article presents the full technical note rather than a promotional landing
+page. Math formulas use MathJax from jsDelivr. Only the PDF is offered for
+download; the LaTeX source archive is not published on the website.
