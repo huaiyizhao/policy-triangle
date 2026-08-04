@@ -284,100 +284,160 @@ sign-dependent bounds ([Yu et al., 2025](https://arxiv.org/abs/2503.14476));
 GSPO replaces the token ratio with a length-normalized sequence-geometric ratio
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
 
-### 2.4 IS geometry: token, prefix, and sequence
+### 2.4 Correction geometry and tail operators
 
-The behavior edge exposes an importance ratio, but \\(B_t=q_t/\mu_t\\) alone is
-not the likelihood ratio of an autoregressive response. The aggregation
-geometry determines both the target measure and the estimator's
-bias–variance profile.
+Token/sequence and IS/TIS/MIS/RS answer different questions. The first pair
+chooses **which probability object is measured**; the second chooses **what is
+done with its tail**. Treating these as two independent axes makes the
+terminology in the analyses of
+[Li and Liu, 2025a](https://richardli.xyz/post/rl-collapse-part2/) and
+[2025b](https://richardli.xyz/post/rl-collapse-part3/) much easier to compare.
 
-#### Sequence and prefix change of measure
+Let the behavior-edge token ratio be
+\\(r_t\equiv B_t=q(y_t\mid h_t)/\mu(y_t\mid h_t)\\). In a bypass topology, the
+same discussion applies with \\(r_t=E_t\\). Let
+\\(\phi_t=\hat A_t\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\) denote a local
+gradient contribution and \\(F(y)\\) a response-level contribution.
 
-For a full response, the exact trajectory likelihood ratio is
+#### First choice: token, prefix, sequence, or geometric statistic
 
-<div class="equation">
-\[
-R_{B,1:T}
-=
-\frac{q(y\mid x)}{\mu(y\mid x)}
-=
-\prod_{t=1}^{T} B_t
-=
-\exp\!\left(\sum_{t=1}^{T}\log B_t\right).
-\]
-</div>
-
-Under common dynamics and adequate support, untruncated sequence IS correctly
-changes the trajectory measure from \\(\mu\\) to \\(q\\). Its weakness is
-variance: log-ratio fluctuations accumulate with length, effective sample size
-can collapse, and one extreme token changes the weight of every gradient term
-in the response.
-
-For a causal contribution at position \\(t\\), per-decision IS can instead use
-the prefix ratio
+The four commonly used statistics are
 
 <div class="equation">
 \[
-R_{B,1:t}=\prod_{j=1}^{t}B_j.
+r_t=B_t,\qquad
+R_{1:t}=\prod_{j=1}^{t}r_j,\qquad
+R=R_{1:T}=\prod_{t=1}^{T}r_t,\qquad
+G=R^{1/T}=\exp\!\left(\frac1T\sum_t\log r_t\right).
 \]
 </div>
 
-It avoids multiplying ratios from future tokens that cannot affect the current
-decision, but its variance still grows along the prefix. The exact
-per-decision form also depends on how returns and advantages are defined.
-
-#### Token-level approximation
-
-Practical LLM systems often attach only \\(B_t\\) to the token at position
-\\(t\\). This corrects the sampled action conditional on the observed context,
-but the context \\(h_t\\) itself is still distributed under \\(\mu\\). Token IS
-therefore leaves prefix or occupancy mismatch uncorrected. It is usually much
-lower variance and localizes an outlier to one token, at the cost of bias
-relative to the full \\(q\\)-trajectory objective.
-
-#### Raw IS, truncated IS, and masked tails
-
-Truncated importance sampling replaces a raw weight \\(w\\) by
-\\(\widetilde w=\min(w,c)\\) and detaches it
-([Ionides, 2008](https://doi.org/10.1198/106186008X320456)). Truncation bounds
-the weight's tail and usually reduces variance, but deliberately introduces
-bias. It does not by itself bound the variance contributed by advantages or
-score gradients, nor does it turn a token ratio into an exact sequence
-correction.
+They do not have interchangeable semantics:
 
 <div class="table-wrap" markdown="1">
 
-| Estimator | Weight applied to a gradient term | Variance | Main bias or limitation |
-|---|---|---|---|
-| Raw sequence IS | \\(R_{B,1:T}\\) | Very high for long responses | No truncation bias in the trajectory change of measure, but requires support and reliable returns/advantages. |
-| Sequence TIS | \\(\min(R_{B,1:T},c)\\) | Lower than raw sequence IS, but still length sensitive | Truncation bias; one sequence weight is broadcast to every token. |
-| Prefix/per-decision IS | \\(R_{B,1:t}\\) | Grows with position \\(t\\) | Exactness depends on the per-decision objective and advantage construction. |
-| Token IS | \\(B_t\\) | Lower | Does not correct the distribution of the observed prefix \\(h_t\\). |
-| Token TIS | \\(\min(B_t,c)\\) | Lower than raw token IS when tails dominate | Combines token-level approximation bias with truncation bias. |
+| Geometry | What it changes or measures | Bias–variance consequence |
+|---|---|---|
+| Token \\(r_t\\) | Corrects the sampled action conditional on the observed prefix \\(h_t\\). | Local and relatively low variance, but leaves the prefix or state-occupancy distribution under \\(\mu\\); biased relative to a full \\(q\\)-trajectory objective. |
+| Prefix \\(R_{1:t}\\) | Changes measure for a causal contribution at position \\(t\\), without ratios from future tokens. | Can be exact for the corresponding per-decision objective, but variance grows along the prefix and depends on the return/advantage construction. |
+| Sequence \\(R\\) | Changes the complete response measure: \\(R=q(y\mid x)/\mu(y\mid x)\\). | Untruncated sequence IS is exact under support and common-dynamics assumptions, but its second moment and weight concentration can grow rapidly with length. |
+| Geometric \\(G\\) | Measures average sampled log-ratio per token. | Length normalized and useful for gating or diagnostics, but **not** a density ratio and therefore not an IS weight. Opposite-signed token log-ratios can also cancel. |
 
 </div>
 
-In the veRL rollout-correction terminology, sequence-level masked IS (MIS)
-rejects an outlier sequence instead of capping its weight
-([veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)).
-TIS treats the tail as noisy but still informative; MIS treats it as
-untrustworthy. Both trade bias for stability, and neither repairs support
-mismatch.
-
-The geometric ratio
+For sequence IS, the change-of-measure identity is
 
 <div class="equation">
 \[
-G_B=\exp\!\left(\frac{1}{T}\sum_t\log B_t\right)
+\mathbb E_{y\sim\mu}[R(y)F(y)]
+=
+\mathbb E_{y\sim q}[F(y)].
 \]
 </div>
 
-is length normalized but is not a trajectory density ratio. It is better
-interpreted as a sequence-level statistic for masking, clipping, or diagnostics.
-Group aggregation and sampled or full-distribution divergences provide further
-geometries that can be chosen independently for each operator.
+Its statistical problem is not merely that \\(R\\) can be numerically large.
+Because \\(\log R=\sum_t\log r_t\\), dispersion accumulates across the
+response; a few trajectories can dominate the batch and drive effective sample
+size toward one. Fixed sequence thresholds are also length sensitive because
+the distribution of a sum of log-ratios changes with \\(T\\). Token IS avoids
+the product, but it pays for that stability by not correcting how the prefix
+itself was generated.
 
-A broad class of critic-free policy-loss gradients can be written as
+<figure class="triangle-figure">
+  <img src="{{ '/assets/is-tail-operators.svg' | relative_url }}" alt="Academic diagram separating importance-sampling geometry from tail operators. Token, prefix, sequence, and geometric statistics feed into IS, TIS, MIS, and rejection sampling. IS keeps the raw ratio, TIS caps it, MIS masks the tail while retaining the IS weight, and rejection sampling applies a pure selection mask.">
+  <figcaption>
+    Figure 2. Rollout correction is the composition of a ratio statistic and a
+    tail operator. The same operator can act at token or sequence scale; the
+    geometric mean is a length-normalized gating statistic, not an IS weight.
+  </figcaption>
+</figure>
+
+#### Second choice: IS, TIS, MIS, or RS
+
+For a valid density ratio \\(R\\), a cap \\(C\\), and an acceptance statistic
+\\(S\\), the four operators can be separated algebraically:
+
+<div class="equation">
+\[
+\begin{aligned}
+\text{IS:}\;& RF,\\
+\text{TIS:}\;& \min(R,C)F,\\
+\text{MIS:}\;& \mathbf 1\{R\le C\}\,RF,\\
+\text{RS:}\;& \mathbf 1\{S\in\mathcal A\}\,F.
+\end{aligned}
+\]
+</div>
+
+**IS** keeps the raw change-of-measure weight. **Truncated IS (TIS)** caps a
+large weight but keeps the sample, treating the tail as informative but too
+noisy. **Masked IS (MIS)** drops the tail and retains the original IS weight
+inside the accepted region: a useful mnemonic is **MIS = mask × IS**.
+In the rollout-correction terminology used here, **rejection sampling (RS)** is
+pure selection: accepted data receives whatever base loss or separately
+configured weight follows the mask. This is narrower than the general
+statistical use of “rejection sampling.” The mask may use a one-sided ratio
+threshold, a two-sided band, a geometric statistic, or a divergence.
+
+This distinction resolves an implementation-level naming ambiguity. In the
+[veRL rollout-correction formulation](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html),
+RS modifies the response mask and can be composed with a separate IS choice.
+Thus Seq-MIS, \\(\mathbf 1\{R\le C\}RF\\), is one particular composition; it is
+not a synonym for every sequence-level rejection rule. The pure geometric rule
+called Geo-Mask in Li and Liu's Part 3, and Geo-RS in veRL, instead has the form
+\\(\mathbf 1\{C_{\rm low}\le G\le C_{\rm high}\}F\\). It performs selection but
+no change of measure.
+
+At token scale, replace \\(R,F\\) by \\(r_t,\phi_t\\). The resulting matrix makes
+the combinations explicit:
+
+<div class="table-wrap" markdown="1">
+
+| Scale | IS | TIS | MIS | Pure RS |
+|---|---|---|---|---|
+| Token | \\(r_t\phi_t\\) | \\(\min(r_t,C)\phi_t\\) | \\(\mathbf1\{r_t\le C\}r_t\phi_t\\) | \\(\mathbf1\{r_t\in\mathcal A_t\}\phi_t\\) |
+| Sequence | \\(RF\\) | \\(\min(R,C)F\\) | \\(\mathbf1\{R\le C\}RF\\) | \\(\mathbf1\{R\in\mathcal A\}F\\) |
+| Geometric gate | Not valid: \\(G\\) is not a density ratio | A heuristic shaper, not TIS in the change-of-measure sense | \\(\mathbf1\{G\in\mathcal A\}RF\\): geometric mask plus sequence IS | \\(\mathbf1\{G\in\mathcal A\}F\\): Geo-RS |
+
+</div>
+
+The matrix gives algebraic descriptions, not universally standardized method
+names. In particular, “Token-MIS” and “Seq-RS” may be labeled differently by
+different codebases; the formula should take precedence over the acronym.
+
+#### Reading the bias–variance trade-off
+
+The operator determines how the tail is treated; the geometry determines what
+kind of mismatch remains:
+
+1. **Seq-IS:** no truncation or selection bias in the trajectory
+   change-of-measure identity, but potentially catastrophic weight variance and
+   poor effective sample size for long responses.
+2. **Token-IS:** much lower variance under bounded per-token terms, but prefix
+   or occupancy bias remains even before any truncation is applied.
+3. **TIS:** caps tail influence and usually lowers variance, while adding
+   \\(\mathbb E_\mu[(\min(R,C)-R)F]\\) truncation bias. Seq-TIS broadcasts one
+   capped response weight to every token; Token-TIS adds truncation bias on top
+   of the token approximation.
+4. **MIS:** bounds the accepted IS weight and removes suspected bad-tail data,
+   but sacrifices sample efficiency. For Seq-MIS its bias is exactly the omitted
+   target-tail contribution, \\(-\mathbb E_q[F\mathbf1\{R>C\}]\\).
+5. **RS:** can reject on a more robust or length-normalized statistic, but is a
+   selection mechanism rather than off-policy correction. Geo-RS avoids a raw
+   product threshold's length scale, yet can miss localized token outliers or
+   cancellation; it is often paired with Token-TIS to obtain a sequence gate
+   plus local weights.
+
+These rankings require qualifications. Bounds such as polynomial token-level
+variance or capped sequence-level variance assume bounded score and
+return/advantage terms; stale or incorrect advantages can still dominate. A
+fixed threshold can also create length-conditioned truncation or rejection, so
+ESS and acceptance rates should always be reported by response length.
+Finally, detached TIS is not PPO clipping: TIS caps a statistical weight,
+whereas PPO uses an advantage-dependent differentiable shaper as described in
+Section 2.3.
+
+A broad class of critic-free policy-loss gradients can now be read as an
+explicit composition:
 
 <div class="equation">
 \[
@@ -469,7 +529,8 @@ sampling, or systems optimizations.
 | [GSPO](https://arxiv.org/abs/2507.18071) | Coupled | \\(\mathrm C_{\mathrm{geo}}(E)\\) | Sequence-geometric shaping; the original objective does not add a separate pre-filter. |
 | [Decoupled PPO](https://arxiv.org/abs/2110.00641) / [AReaL](https://arxiv.org/abs/2505.24298) / [A-3PO](https://arxiv.org/abs/2512.06547) | Factorized | \\(\mathrm W(B)\mathrm C(U)\\) | Behavior correction is detached from the trainable proximal constraint. |
 | [TIS](https://doi.org/10.1198/106186008X320456) / rollout IS | Either | \\(\mathrm W_{\mathrm{tok/seq}}(B\text{ or }E)\\) | Raw or truncated detached weights trade change-of-measure fidelity for variance control. |
-| MIS / rejection sampling | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional \\(\mathrm W\\) and \\(\mathrm C\\) | Outlier tokens or sequences are removed rather than assigned capped weights. |
+| MIS | Either | \\(\mathrm M_{\mathrm{tok/seq}}(B\text{ or }E)\mathrm W_{\mathrm{raw}}(B\text{ or }E)\\), optional \\(\mathrm C\\) | A hard mask removes the tail; accepted samples retain their raw IS weight. |
+| RS / Geo-RS | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional separate \\(\mathrm W\\) and \\(\mathrm C\\) | Pure selection is orthogonal to weighting; a geometric gate is length normalized but is not an IS ratio. |
 | [IcePop](https://arxiv.org/abs/2510.18855) / [KPop](https://ringtech.notion.site/kpop) | Usually direct | \\(\mathrm M_{\mathrm{tok}}(E)\\) plus a base loss | IcePop uses a ratio region; KPop uses bidirectional binary-KL geometry sensitive to absolute probability. |
 | [DPPO](https://arxiv.org/abs/2602.04879) / [TRM](https://arxiv.org/abs/2512.23075) | Direct | Divergence \\(\mathrm M(E)\\) or \\(\mathrm C(E)\\) | Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence. |
 
@@ -719,5 +780,11 @@ tested without presenting them as established improvements.
     [2605.14220](https://arxiv.org/abs/2605.14220).
 32. Ziegler, D. M. et al. “Fine-Tuning Language Models from Human Preferences.”
     *arXiv*, 2019. [1909.08593](https://arxiv.org/abs/1909.08593).
+33. Li, Y., and Liu, J. “Part 2: Applying the SGA Framework—Token vs.
+    Sequence-Level Correction.” Blog post, 2025.
+    [Article](https://richardli.xyz/post/rl-collapse-part2/).
+34. Li, Y., and Liu, J. “Part 3: Trust Region Optimization via Sequence
+    Masking.” Blog post, 2025.
+    [Article](https://richardli.xyz/post/rl-collapse-part3/).
 
 </div>

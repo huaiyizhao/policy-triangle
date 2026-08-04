@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="is-title is-desc">
+  <title id="is-title">Importance-sampling geometry and tail operators</title>
+  <desc id="is-desc">A two-stage academic diagram. First choose a token, prefix, sequence, or geometric statistic. Then choose raw importance sampling, truncated importance sampling, masked importance sampling, or rejection sampling. Transfer curves show that IS keeps the raw ratio, TIS caps it, MIS drops the tail while keeping the importance weight below the threshold, and RS is a binary selection mask.</desc>
+
+  <defs>
+    <marker id="down-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7b858f"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#f6f8fa"/>
+  <rect x="34" y="34" width="1372" height="832" rx="10" fill="#ffffff" stroke="#d8dde2" stroke-width="2"/>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="70" y="79" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="34">Rollout correction = ratio statistic × tail operator</text>
+    <text x="70" y="109" fill="#59636e" font-size="17">Geometry decides what distributional mismatch is represented; the operator decides how its tail contributes.</text>
+
+    <!-- Step 1 -->
+    <rect x="62" y="135" width="1316" height="230" rx="8" fill="#f8fafb" stroke="#d8dde2" stroke-width="1.5"/>
+    <text x="84" y="166" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 1 · CHOOSE THE STATISTIC</text>
+
+    <g transform="translate(84 187)">
+      <rect width="286" height="142" rx="7" fill="#f4f9fc" stroke="#2878ad" stroke-width="2"/>
+      <text x="18" y="30" fill="#2878ad" font-size="14" font-weight="700" letter-spacing="1.6">TOKEN</text>
+      <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">r<tspan baseline-shift="sub" font-size="18">t</tspan> = q<tspan baseline-shift="sub" font-size="18">t</tspan> / μ<tspan baseline-shift="sub" font-size="18">t</tspan></text>
+      <line x1="18" y1="82" x2="268" y2="82" stroke="#c7dce9"/>
+      <text x="18" y="106" fill="#35404a" font-size="15">local action correction</text>
+      <text x="18" y="127" fill="#59636e" font-size="13">prefix occupancy remains under μ</text>
+    </g>
+
+    <g transform="translate(413 187)">
+      <rect width="286" height="142" rx="7" fill="#f7f8fc" stroke="#5578a7" stroke-width="2"/>
+      <text x="18" y="30" fill="#5578a7" font-size="14" font-weight="700" letter-spacing="1.6">PREFIX</text>
+      <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">R<tspan baseline-shift="sub" font-size="18">1:t</tspan> = ∏<tspan baseline-shift="sub" font-size="18">j≤t</tspan> r<tspan baseline-shift="sub" font-size="18">j</tspan></text>
+      <line x1="18" y1="82" x2="268" y2="82" stroke="#d0d8e5"/>
+      <text x="18" y="106" fill="#35404a" font-size="15">causal change of measure</text>
+      <text x="18" y="127" fill="#59636e" font-size="13">variance grows along the prefix</text>
+    </g>
+
+    <g transform="translate(742 187)">
+      <rect width="286" height="142" rx="7" fill="#fff9f2" stroke="#c66d0a" stroke-width="2"/>
+      <text x="18" y="30" fill="#c66d0a" font-size="14" font-weight="700" letter-spacing="1.6">SEQUENCE</text>
+      <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">R = ∏<tspan baseline-shift="sub" font-size="18">t</tspan> r<tspan baseline-shift="sub" font-size="18">t</tspan> = q(y) / μ(y)</text>
+      <line x1="18" y1="82" x2="268" y2="82" stroke="#ecd6bc"/>
+      <text x="18" y="106" fill="#35404a" font-size="15">exact trajectory ratio</text>
+      <text x="18" y="127" fill="#59636e" font-size="13">high variance; length sensitive</text>
+    </g>
+
+    <g transform="translate(1071 187)">
+      <rect width="286" height="142" rx="7" fill="#f4faf7" stroke="#19845d" stroke-width="2"/>
+      <text x="18" y="30" fill="#19845d" font-size="14" font-weight="700" letter-spacing="1.6">GEOMETRIC</text>
+      <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">G = R<tspan baseline-shift="super" font-size="17">1/T</tspan></text>
+      <line x1="18" y1="82" x2="268" y2="82" stroke="#c9e1d8"/>
+      <text x="18" y="106" fill="#35404a" font-size="15">length-normalized statistic</text>
+      <text x="18" y="127" fill="#59636e" font-size="13">mask / diagnostic; not an IS ratio</text>
+    </g>
+
+    <line x1="720" y1="366" x2="720" y2="397" stroke="#7b858f" stroke-width="2" marker-end="url(#down-arrow)"/>
+    <rect x="630" y="367" width="180" height="24" fill="#ffffff"/>
+    <text x="720" y="384" text-anchor="middle" fill="#59636e" font-size="13" font-weight="700">COMPOSE INDEPENDENTLY</text>
+
+    <!-- Step 2 -->
+    <rect x="62" y="405" width="1316" height="370" rx="8" fill="#f8fafb" stroke="#d8dde2" stroke-width="1.5"/>
+    <text x="84" y="436" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 2 · CHOOSE THE TAIL OPERATOR</text>
+
+    <!-- IS -->
+    <g transform="translate(84 456)">
+      <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#2878ad" stroke-width="2"/>
+      <text x="18" y="31" fill="#2878ad" font-size="15" font-weight="700" letter-spacing="1.8">IS · RAW WEIGHT</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="23">w(R) = R</text>
+      <g transform="translate(24 76)">
+        <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
+        <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>
+        <path d="M0 125 L218 10" fill="none" stroke="#2878ad" stroke-width="4"/>
+        <text x="224" y="143" fill="#7b858f" font-size="12">R</text>
+        <text x="-8" y="9" text-anchor="end" fill="#7b858f" font-size="12">w</text>
+      </g>
+      <text x="18" y="231" fill="#35404a" font-size="15">Keeps every ratio unchanged.</text>
+      <text x="18" y="254" fill="#59636e" font-size="13">Exact change of measure;</text>
+      <text x="18" y="273" fill="#59636e" font-size="13">tail can dominate variance.</text>
+    </g>
+
+    <!-- TIS -->
+    <g transform="translate(413 456)">
+      <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#c66d0a" stroke-width="2"/>
+      <text x="18" y="31" fill="#c66d0a" font-size="15" font-weight="700" letter-spacing="1.8">TIS · CAP</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="23">w(R) = min(R, C)</text>
+      <g transform="translate(24 76)">
+        <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
+        <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>
+        <path d="M0 125 L122 58 L218 58" fill="none" stroke="#c66d0a" stroke-width="4"/>
+        <line x1="122" y1="125" x2="122" y2="51" stroke="#c66d0a" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="122" y="143" text-anchor="middle" fill="#7b858f" font-size="12">C</text>
+        <text x="224" y="143" fill="#7b858f" font-size="12">R</text>
+        <text x="-8" y="9" text-anchor="end" fill="#7b858f" font-size="12">w</text>
+      </g>
+      <text x="18" y="231" fill="#35404a" font-size="15">Keeps the tail at capped weight.</text>
+      <text x="18" y="254" fill="#59636e" font-size="13">Lower variance; truncation bias;</text>
+      <text x="18" y="273" fill="#59636e" font-size="13">all samples still contribute.</text>
+    </g>
+
+    <!-- MIS -->
+    <g transform="translate(742 456)">
+      <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#a53f3f" stroke-width="2"/>
+      <text x="18" y="31" fill="#a53f3f" font-size="15" font-weight="700" letter-spacing="1.8">MIS · MASK × IS</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="22">w(R) = 1{R≤C} R</text>
+      <g transform="translate(24 76)">
+        <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
+        <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>
+        <path d="M0 125 L122 58 L122 125 L218 125" fill="none" stroke="#a53f3f" stroke-width="4"/>
+        <line x1="122" y1="125" x2="122" y2="51" stroke="#a53f3f" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="122" y="143" text-anchor="middle" fill="#7b858f" font-size="12">C</text>
+        <text x="224" y="143" fill="#7b858f" font-size="12">R</text>
+        <text x="-8" y="9" text-anchor="end" fill="#7b858f" font-size="12">w</text>
+      </g>
+      <text x="18" y="231" fill="#35404a" font-size="15">Drops the tail completely.</text>
+      <text x="18" y="254" fill="#59636e" font-size="13">Keeps raw IS weight when accepted;</text>
+      <text x="18" y="273" fill="#59636e" font-size="13">omitted-tail bias, lower utilization.</text>
+    </g>
+
+    <!-- RS -->
+    <g transform="translate(1071 456)">
+      <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#19845d" stroke-width="2"/>
+      <text x="18" y="31" fill="#19845d" font-size="15" font-weight="700" letter-spacing="1.8">RS · PURE MASK</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="21">m(S) = 1{S ∈ A}</text>
+      <g transform="translate(24 76)">
+        <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
+        <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>
+        <path d="M0 125 L60 125 L60 45 L174 45 L174 125 L218 125" fill="none" stroke="#19845d" stroke-width="4"/>
+        <line x1="60" y1="125" x2="60" y2="39" stroke="#19845d" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <line x1="174" y1="125" x2="174" y2="39" stroke="#19845d" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="60" y="143" text-anchor="middle" fill="#7b858f" font-size="12">low</text>
+        <text x="174" y="143" text-anchor="middle" fill="#7b858f" font-size="12">high</text>
+        <text x="224" y="143" fill="#7b858f" font-size="12">S</text>
+        <text x="-8" y="9" text-anchor="end" fill="#7b858f" font-size="12">m</text>
+      </g>
+      <text x="18" y="231" fill="#35404a" font-size="15">Selects data; no IS weight itself.</text>
+      <text x="18" y="254" fill="#59636e" font-size="13">Statistic S may be ratio, geometric,</text>
+      <text x="18" y="273" fill="#59636e" font-size="13">divergence, age, or metadata.</text>
+    </g>
+
+    <!-- Identities -->
+    <rect x="62" y="797" width="1316" height="48" rx="6" fill="#17202a"/>
+    <text x="84" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">Seq-MIS = sequence RS mask × sequence IS weight</text>
+    <line x1="624" y1="808" x2="624" y2="834" stroke="#536571"/>
+    <text x="654" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">Geo-RS + Token-TIS = length-normalized gate × local capped weights</text>
+  </g>
+</svg>
