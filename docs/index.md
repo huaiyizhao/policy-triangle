@@ -5,11 +5,11 @@ short_title: The Policy Triangle
 subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
 description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
-date: 2026-07-31
+date: 2026-08-04
 ---
 
 <figure class="hero-figure">
-  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="A response passes through three versions of an AI model: the behavior model writes it, the proximal model marks the start of learning, and the current model changes while learning. The policy triangle tracks the resulting mismatch.">
+  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic overview of asynchronous LLM reinforcement learning: behavior policy mu generates data, proximal policy q supplies behavior correction and an update anchor, and current policy pi receives the gradient. Methods are located by edge, operator, and geometry.">
 </figure>
 
 <div class="abstract" markdown="1">
@@ -63,7 +63,39 @@ policy is stale or numerically different. Second, the trainable policy may move
 further while the same data is reused across optimizer steps. A direct ratio
 conflates the two; a factorized view keeps their causes visible.
 
-### 1.2 What existing mitigations do
+### 1.2 Why Decoupled PPO matters
+
+Standard PPO normally lets one old policy play two roles: it is treated both as
+the policy that generated the data and as the proximal anchor used by clipping.
+This coupling is natural when rollouts are fresh and optimization starts
+immediately. It becomes ambiguous when a large or asynchronous batch mixes
+samples from stale workers, replay, or a numerically different inference
+backend.
+
+Let \\(\mu\\) denote the policy that actually generated a token and \\(q\\) the
+frozen learner policy at the start of an update. If \\(\mu\\) is stale while the
+current policy is still close to \\(q\\), an ordinary PPO ratio
+\\(\pi_\theta/\mu\\) can already lie outside its clipping band before the current
+optimizer has moved very far. The clip then reacts to two effects at once:
+rollout staleness and update drift.
+
+Decoupled PPO separates those roles
+([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)). The ratio
+\\(q/\mu\\) corrects the behavior-to-learner gap, while
+\\(\pi_\theta/q\\) controls the update around a proximal anchor. This was
+originally motivated by batch-size invariance, but the same separation is
+useful for asynchronous LLM training because it creates an explicit interface
+between rollout correction and policy optimization.
+
+The separation is not a free solution to stale data. The behavior-correction
+weight can be heavy-tailed, token-level correction does not fully repair prefix
+distribution shift, and an old advantage estimate may remain unreliable. The
+age of \\(q\\) also creates a speed–stability trade-off: a recent anchor usually
+clips less and learns faster, whereas an older anchor can act as a stronger
+brake on highly stale data. In synchronous training, \\(\mu=q\\), so coupled and
+decoupled PPO coincide.
+
+### 1.3 What existing mitigations do
 
 Despite a rapidly expanding vocabulary, most mitigation mechanisms perform one
 of three roles:
@@ -160,6 +192,58 @@ proximal forward pass but loses causal attribution.
 mismatch on \\(B\\) while constraining the current update on \\(U\\), typically as
 \\(\mathrm W(B)\mathrm C(U)\\).
 
+For PPO clipping, the two constructions can be written side by side. A coupled
+objective attaches the shaper to the direct edge:
+
+<div class="equation">
+\[
+L_{\mathrm{coupled}}
+=
+\mathbb E_{\mu}
+\left[
+\min\!\left(
+E_t\hat A_t,\,
+\operatorname{clip}(E_t,1-\epsilon,1+\epsilon)\hat A_t
+\right)
+\right].
+\]
+</div>
+
+Decoupled PPO attaches a detached behavior weight to \\(B\\) and the
+differentiable PPO shaper to \\(U\\):
+
+<div class="equation">
+\[
+L_{\mathrm{decoupled}}
+=
+\mathbb E_{\mu}
+\left[
+\operatorname{sg}[B_t]\,
+\min\!\left(
+U_t\hat A_t,\,
+\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)\hat A_t
+\right)
+\right].
+\]
+</div>
+
+On the unclipped branch, the effective score-function coefficient is the same:
+
+<div class="equation">
+\[
+\operatorname{sg}[B_t]\,U_t\hat A_t
+\nabla_\theta\log\pi_\theta
+=
+E_t\hat A_t\nabla_\theta\log\pi_\theta.
+\]
+</div>
+
+Decoupling therefore does not introduce a different policy gradient in the
+linear limit. It changes where the nonlinear trust-region mechanism is
+attached: coupled PPO clips total mismatch \\(E\\), whereas Decoupled PPO
+corrects \\(B\\) and clips only update drift \\(U\\). The choice of \\(q\\) is
+therefore a speed–stability design variable, not merely an accounting device.
+
 The proximal anchor is itself a design variable. A-3PO, for example,
 approximates it by interpolating behavior and current log-probabilities to avoid
 an additional model forward pass while retaining the factorization \\(E=BU\\)
@@ -200,18 +284,98 @@ sign-dependent bounds ([Yu et al., 2025](https://arxiv.org/abs/2503.14476));
 GSPO replaces the token ratio with a length-normalized sequence-geometric ratio
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
 
-### 2.4 Geometry: the scale of intervention
+### 2.4 IS geometry: token, prefix, and sequence
 
-An algorithm need not have one global granularity. Each operator may
-independently use:
+The behavior edge exposes an importance ratio, but \\(B_t=q_t/\mu_t\\) alone is
+not the likelihood ratio of an autoregressive response. The aggregation
+geometry determines both the target measure and the estimator's
+bias–variance profile.
 
-- **Token ratio:** \\(X_t\\).
-- **Sequence product:** \\(R_X=\prod_tX_t\\), an exact trajectory ratio but
-  usually high variance.
-- **Geometric ratio:** \\(G_X=\exp(T^{-1}\sum_t\log X_t)\\), length normalized but
-  not a trajectory density ratio.
-- **Group statistic:** aggregation over several responses from one prompt.
-- **Divergence:** sampled binary KL, top-\\(k\\), or full-distribution KL/TV.
+#### Sequence and prefix change of measure
+
+For a full response, the exact trajectory likelihood ratio is
+
+<div class="equation">
+\[
+R_{B,1:T}
+=
+\frac{q(y\mid x)}{\mu(y\mid x)}
+=
+\prod_{t=1}^{T} B_t
+=
+\exp\!\left(\sum_{t=1}^{T}\log B_t\right).
+\]
+</div>
+
+Under common dynamics and adequate support, untruncated sequence IS correctly
+changes the trajectory measure from \\(\mu\\) to \\(q\\). Its weakness is
+variance: log-ratio fluctuations accumulate with length, effective sample size
+can collapse, and one extreme token changes the weight of every gradient term
+in the response.
+
+For a causal contribution at position \\(t\\), per-decision IS can instead use
+the prefix ratio
+
+<div class="equation">
+\[
+R_{B,1:t}=\prod_{j=1}^{t}B_j.
+\]
+</div>
+
+It avoids multiplying ratios from future tokens that cannot affect the current
+decision, but its variance still grows along the prefix. The exact
+per-decision form also depends on how returns and advantages are defined.
+
+#### Token-level approximation
+
+Practical LLM systems often attach only \\(B_t\\) to the token at position
+\\(t\\). This corrects the sampled action conditional on the observed context,
+but the context \\(h_t\\) itself is still distributed under \\(\mu\\). Token IS
+therefore leaves prefix or occupancy mismatch uncorrected. It is usually much
+lower variance and localizes an outlier to one token, at the cost of bias
+relative to the full \\(q\\)-trajectory objective.
+
+#### Raw IS, truncated IS, and masked tails
+
+Truncated importance sampling replaces a raw weight \\(w\\) by
+\\(\widetilde w=\min(w,c)\\) and detaches it
+([Ionides, 2008](https://doi.org/10.1198/106186008X320456)). Truncation bounds
+the weight's tail and usually reduces variance, but deliberately introduces
+bias. It does not by itself bound the variance contributed by advantages or
+score gradients, nor does it turn a token ratio into an exact sequence
+correction.
+
+<div class="table-wrap" markdown="1">
+
+| Estimator | Weight applied to a gradient term | Variance | Main bias or limitation |
+|---|---|---|---|
+| Raw sequence IS | \\(R_{B,1:T}\\) | Very high for long responses | No truncation bias in the trajectory change of measure, but requires support and reliable returns/advantages. |
+| Sequence TIS | \\(\min(R_{B,1:T},c)\\) | Lower than raw sequence IS, but still length sensitive | Truncation bias; one sequence weight is broadcast to every token. |
+| Prefix/per-decision IS | \\(R_{B,1:t}\\) | Grows with position \\(t\\) | Exactness depends on the per-decision objective and advantage construction. |
+| Token IS | \\(B_t\\) | Lower | Does not correct the distribution of the observed prefix \\(h_t\\). |
+| Token TIS | \\(\min(B_t,c)\\) | Lower than raw token IS when tails dominate | Combines token-level approximation bias with truncation bias. |
+
+</div>
+
+In the veRL rollout-correction terminology, sequence-level masked IS (MIS)
+rejects an outlier sequence instead of capping its weight
+([veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)).
+TIS treats the tail as noisy but still informative; MIS treats it as
+untrustworthy. Both trade bias for stability, and neither repairs support
+mismatch.
+
+The geometric ratio
+
+<div class="equation">
+\[
+G_B=\exp\!\left(\frac{1}{T}\sum_t\log B_t\right)
+\]
+</div>
+
+is length normalized but is not a trajectory density ratio. It is better
+interpreted as a sequence-level statistic for masking, clipping, or diagnostics.
+Group aggregation and sampled or full-distribution divergences provide further
+geometries that can be chosen independently for each operator.
 
 A broad class of critic-free policy-loss gradients can be written as
 
@@ -259,11 +423,10 @@ Therefore, filtering total mismatch is not equivalent to filtering the behavior
 and update edges independently. A mask may nevertheless read any edge without
 forcing a downstream importance weight to consume the same edge.
 
-#### Variance control
+#### Normalization after truncation
 
-Truncated importance sampling uses \\(\widetilde w_i=\min(w_i,c)\\)
-([Ionides, 2008](https://doi.org/10.1198/106186008X320456)). Self-normalization
-is orthogonal:
+After an IS geometry and truncation rule have been chosen, self-normalization
+is an orthogonal variance-control decision:
 
 <div class="equation">
 \[
@@ -305,7 +468,8 @@ sampling, or systems optimizations.
 | [CISPO](https://arxiv.org/abs/2506.13585) / [TOPR](https://arxiv.org/abs/2503.14286) | Direct PG | \\(\mathrm W_{\mathrm{tok}}(E)\\) | Detached clipped or tapered weight; gradients need not vanish outside a PPO band. |
 | [GSPO](https://arxiv.org/abs/2507.18071) | Coupled | \\(\mathrm C_{\mathrm{geo}}(E)\\) | Sequence-geometric shaping; the original objective does not add a separate pre-filter. |
 | [Decoupled PPO](https://arxiv.org/abs/2110.00641) / [AReaL](https://arxiv.org/abs/2505.24298) / [A-3PO](https://arxiv.org/abs/2512.06547) | Factorized | \\(\mathrm W(B)\mathrm C(U)\\) | Behavior correction is detached from the trainable proximal constraint. |
-| [TIS](https://doi.org/10.1198/106186008X320456) / MIS / [rollout correction](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html) | Either | \\(\mathrm M(B\text{ or }E)\mathrm W(B\text{ or }E)\\), optional \\(\mathrm C\\) | Weighting and rejection compose; bypass and decoupled modes change edge semantics. |
+| [TIS](https://doi.org/10.1198/106186008X320456) / rollout IS | Either | \\(\mathrm W_{\mathrm{tok/seq}}(B\text{ or }E)\\) | Raw or truncated detached weights trade change-of-measure fidelity for variance control. |
+| MIS / rejection sampling | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional \\(\mathrm W\\) and \\(\mathrm C\\) | Outlier tokens or sequences are removed rather than assigned capped weights. |
 | [IcePop](https://arxiv.org/abs/2510.18855) / [KPop](https://ringtech.notion.site/kpop) | Usually direct | \\(\mathrm M_{\mathrm{tok}}(E)\\) plus a base loss | IcePop uses a ratio region; KPop uses bidirectional binary-KL geometry sensitive to absolute probability. |
 | [DPPO](https://arxiv.org/abs/2602.04879) / [TRM](https://arxiv.org/abs/2512.23075) | Direct | Divergence \\(\mathrm M(E)\\) or \\(\mathrm C(E)\\) | Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence. |
 
@@ -423,9 +587,11 @@ therefore a geometry and normalization choice within the same solution space.
    geometry, sign rule, and normalization domain.
 4. **Inspect compositions.** Distinguish deliberate bias–variance choices from
    accidental missing or duplicated ratio factors.
-5. **Measure the coordinates separately.** Report \\(B\\), \\(U\\), and \\(E\\)
-   alongside rejection, effective sample size, gradient variance, policy age,
-   reward, and throughput.
+5. **Measure the coordinates separately.** Report token \\(\log B_t\\),
+   cumulative prefix and sequence log-ratios, \\(U\\), and \\(E\\). Track
+   effective sample size before and after truncation, truncation or rejection
+   rates by response length, gradient variance, policy age, reward, and
+   throughput.
 
 ## 4. Limitations and conclusion {#scope}
 
