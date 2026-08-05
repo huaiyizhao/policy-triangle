@@ -33,8 +33,8 @@
       <text x="18" y="30" fill="#5578a7" font-size="14" font-weight="700" letter-spacing="1.6">PREFIX</text>
       <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">R<tspan baseline-shift="sub" font-size="18">1:t</tspan> = ∏<tspan baseline-shift="sub" font-size="18">j≤t</tspan> r<tspan baseline-shift="sub" font-size="18">j</tspan></text>
       <line x1="18" y1="82" x2="268" y2="82" stroke="#d0d8e5"/>
-      <text x="18" y="106" fill="#35404a" font-size="15">causal change of measure</text>
-      <text x="18" y="127" fill="#59636e" font-size="13">variance grows along the prefix</text>
+      <text x="18" y="106" fill="#35404a" font-size="15">minimum exact causal ratio</text>
+      <text x="18" y="127" fill="#59636e" font-size="13">if the signal is prefix-measurable</text>
     </g>
 
     <g transform="translate(742 187)">
@@ -42,7 +42,7 @@
       <text x="18" y="30" fill="#c66d0a" font-size="14" font-weight="700" letter-spacing="1.6">SEQUENCE</text>
       <text x="18" y="68" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="27">R = ∏<tspan baseline-shift="sub" font-size="18">t</tspan> r<tspan baseline-shift="sub" font-size="18">t</tspan> = q(y) / μ(y)</text>
       <line x1="18" y1="82" x2="268" y2="82" stroke="#ecd6bc"/>
-      <text x="18" y="106" fill="#35404a" font-size="15">exact trajectory ratio</text>
+      <text x="18" y="106" fill="#35404a" font-size="15">exact for arbitrary response F</text>
       <text x="18" y="127" fill="#59636e" font-size="13">high variance; length sensitive</text>
     </g>
 
@@ -103,7 +103,7 @@
     <g transform="translate(742 456)">
       <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#a53f3f" stroke-width="2"/>
       <text x="18" y="31" fill="#a53f3f" font-size="15" font-weight="700" letter-spacing="1.8">MIS · MASK × IS</text>
-      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="22">w(R) = 1{R≤C} R</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="22">w(R) = I[R ≤ C] R</text>
       <g transform="translate(24 76)">
         <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
         <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>
@@ -122,7 +122,7 @@
     <g transform="translate(1071 456)">
       <rect width="286" height="286" rx="7" fill="#ffffff" stroke="#19845d" stroke-width="2"/>
       <text x="18" y="31" fill="#19845d" font-size="15" font-weight="700" letter-spacing="1.8">RS · PURE MASK</text>
-      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="21">m(S) = 1{S ∈ A}</text>
+      <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="21">m(S) = I[S ∈ A]</text>
       <g transform="translate(24 76)">
         <line x1="0" y1="125" x2="230" y2="125" stroke="#aeb6bf" stroke-width="1.5"/>
         <line x1="0" y1="125" x2="0" y2="5" stroke="#aeb6bf" stroke-width="1.5"/>

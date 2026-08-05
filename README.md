@@ -11,6 +11,8 @@ learning.
 - `docs/assets/technical.css` — responsive technical-blog styling
 - `docs/assets/policy-mismatch-intro.svg` — opening illustration
 - `docs/assets/policy-triangle-hero.svg` — detailed solution-space figure
+- `docs/assets/is-tail-operators.svg` — correction geometry and tail operators
+- `docs/assets/bias-variance-tradeoff.svg` — exactness and stability trade-offs
 
 ## Preview
 

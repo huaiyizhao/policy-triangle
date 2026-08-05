@@ -270,7 +270,7 @@ PPO's effective token coefficient is advantage-sign dependent:
 <div class="equation">
 \[
 \mathrm C^{\mathrm{PPO}}(X,\hat A)=
-X\,\mathbf 1\!\left[
+X\,\mathbb{I}\!\left[
 (\hat A\ge0 \land X\le1+\epsilon_+)
 \;\lor\;
 (\hat A&lt;0 \land X\ge1-\epsilon_-)
@@ -278,6 +278,9 @@ X\,\mathbf 1\!\left[
 \tag{2}
 \]
 </div>
+
+Here \\(\mathbb{I}[\cdot]\\) denotes an indicator: it equals one when its
+condition is true and zero otherwise.
 
 Selecting the clipped branch removes gradient in a particular direction. This
 differs from truncating a detached importance weight. DAPO changes the
@@ -298,7 +301,10 @@ Let the behavior-edge token ratio be
 \\(r_t\equiv B_t=q(y_t\mid h_t)/\mu(y_t\mid h_t)\\). In a bypass topology, the
 same discussion applies with \\(r_t=E_t\\). Let
 \\(\phi_t=\hat A_t\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\) denote a local
-gradient contribution and \\(F(y)\\) a response-level contribution.
+gradient contribution and \\(F(y)\\) a generic response-level integrand, such
+as a reward, loss, or full-response gradient contribution. The symbol \\(F\\)
+is a placeholder for what is being estimated, not another policy or
+correction.
 
 #### First choice: token, prefix, sequence, or geometric statistic
 
@@ -320,7 +326,7 @@ They do not have interchangeable semantics:
 | Geometry | What it changes or measures | Bias–variance consequence |
 |---|---|---|
 | Token \\(r_t\\) | Corrects the sampled action conditional on the observed prefix \\(h_t\\). | Local and relatively low variance, but leaves the prefix or state-occupancy distribution under \\(\mu\\); biased relative to a full \\(q\\)-trajectory objective. |
-| Prefix \\(R_{1:t}\\) | Changes measure for a causal contribution at position \\(t\\), without ratios from future tokens. | Can be exact for the corresponding per-decision objective, but variance grows along the prefix and depends on the return/advantage construction. |
+| Prefix \\(R_{1:t}\\) | Changes measure through the sampled token at position \\(t\\), without ratios from future tokens. | Exact for a prefix-measurable contribution \\(f_t(h_t,y_t)\\). If its reward or advantage still depends on the sampled suffix, prefix IS alone is generally biased. |
 | Sequence \\(R\\) | Changes the complete response measure: \\(R=q(y\mid x)/\mu(y\mid x)\\). | Untruncated sequence IS is exact under support and common-dynamics assumptions, but its second moment and weight concentration can grow rapidly with length. |
 | Geometric \\(G\\) | Measures average sampled log-ratio per token. | Length normalized and useful for gating or diagnostics, but **not** a density ratio and therefore not an IS weight. Opposite-signed token log-ratios can also cancel. |
 
@@ -335,6 +341,31 @@ For sequence IS, the change-of-measure identity is
 \mathbb E_{y\sim q}[F(y)].
 \]
 </div>
+
+There is therefore no estimand-independent answer to whether prefix or
+sequence correction is “the” unbiased one. For an arbitrary response-level
+quantity \\(F(y)\\), the full sequence ratio is the general exact correction.
+For a causal contribution \\(f_t\\) that is measurable from \\((h_t,y_t)\\),
+future ratios integrate to one under the same support and common-dynamics
+assumptions, so
+
+<div class="equation">
+\[
+\mathbb E_\mu\!\left[R\,f_t(h_t,y_t)\right]
+=
+\mathbb E_\mu\!\left[R_{1:t}f_t(h_t,y_t)\right]
+=
+\mathbb E_q\!\left[f_t(h_t,y_t)\right].
+\]
+</div>
+
+In that causal case, Prefix-IS is the minimum-horizon exact correction;
+Seq-IS remains unbiased but multiplies by unnecessary future ratios. In common
+outcome-level LLM RL, however, \\(\hat A_t\\) is often computed from the
+complete response. Then \\(\phi_t\\) depends on the suffix and is not
+prefix-measurable: Prefix-IS is not generally exact unless the future return
+has already been replaced by the correct target-policy conditional value or
+corrected per-decision.
 
 Its statistical problem is not merely that \\(R\\) can be numerically large.
 Because \\(\log R=\sum_t\log r_t\\), dispersion accumulates across the
@@ -363,8 +394,8 @@ For a valid density ratio \\(R\\), a cap \\(C\\), and an acceptance statistic
 \begin{aligned}
 \text{IS:}\;& RF,\\
 \text{TIS:}\;& \min(R,C)F,\\
-\text{MIS:}\;& \mathbf 1\{R\le C\}\,RF,\\
-\text{RS:}\;& \mathbf 1\{S\in\mathcal A\}\,F.
+\text{MIS:}\;& \mathbb{I}\!\left[R\le C\right]RF,\\
+\text{RS:}\;& \mathbb{I}\!\left[S\in\mathcal A\right]F.
 \end{aligned}
 \]
 </div>
@@ -382,10 +413,10 @@ threshold, a two-sided band, a geometric statistic, or a divergence.
 This distinction resolves an implementation-level naming ambiguity. In the
 [veRL rollout-correction formulation](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html),
 RS modifies the response mask and can be composed with a separate IS choice.
-Thus Seq-MIS, \\(\mathbf 1\{R\le C\}RF\\), is one particular composition; it is
+Thus Seq-MIS, \\(\mathbb{I}[R\le C]RF\\), is one particular composition; it is
 not a synonym for every sequence-level rejection rule. The pure geometric rule
 called Geo-Mask in Li and Liu's Part 3, and Geo-RS in veRL, instead has the form
-\\(\mathbf 1\{C_{\rm low}\le G\le C_{\rm high}\}F\\). It performs selection but
+\\(\mathbb{I}[C_{\rm low}\le G\le C_{\rm high}]F\\). It performs selection but
 no change of measure.
 
 At token scale, replace \\(R,F\\) by \\(r_t,\phi_t\\). The resulting matrix makes
@@ -395,9 +426,9 @@ the combinations explicit:
 
 | Scale | IS | TIS | MIS | Pure RS |
 |---|---|---|---|---|
-| Token | \\(r_t\phi_t\\) | \\(\min(r_t,C)\phi_t\\) | \\(\mathbf1\{r_t\le C\}r_t\phi_t\\) | \\(\mathbf1\{r_t\in\mathcal A_t\}\phi_t\\) |
-| Sequence | \\(RF\\) | \\(\min(R,C)F\\) | \\(\mathbf1\{R\le C\}RF\\) | \\(\mathbf1\{R\in\mathcal A\}F\\) |
-| Geometric gate | Not valid: \\(G\\) is not a density ratio | A heuristic shaper, not TIS in the change-of-measure sense | \\(\mathbf1\{G\in\mathcal A\}RF\\): geometric mask plus sequence IS | \\(\mathbf1\{G\in\mathcal A\}F\\): Geo-RS |
+| Token | \\(r_t\phi_t\\) | \\(\min(r_t,C)\phi_t\\) | \\(\mathbb{I}[r_t\le C]r_t\phi_t\\) | \\(\mathbb{I}[r_t\in\mathcal A_t]\phi_t\\) |
+| Sequence | \\(RF\\) | \\(\min(R,C)F\\) | \\(\mathbb{I}[R\le C]RF\\) | \\(\mathbb{I}[R\in\mathcal A]F\\) |
+| Geometric gate | Not valid: \\(G\\) is not a density ratio | A heuristic shaper, not TIS in the change-of-measure sense | \\(\mathbb{I}[G\in\mathcal A]RF\\): geometric mask plus sequence IS | \\(\mathbb{I}[G\in\mathcal A]F\\): Geo-RS |
 
 </div>
 
@@ -410,23 +441,37 @@ different codebases; the formula should take precedence over the acronym.
 The operator determines how the tail is treated; the geometry determines what
 kind of mismatch remains:
 
-1. **Seq-IS:** no truncation or selection bias in the trajectory
-   change-of-measure identity, but potentially catastrophic weight variance and
+1. **Seq-IS:** the general unbiased change of measure for an arbitrary
+   response-level \\(F(y)\\), but potentially catastrophic weight variance and
    poor effective sample size for long responses.
-2. **Token-IS:** much lower variance under bounded per-token terms, but prefix
+2. **Prefix-IS:** unbiased for a prefix-measurable causal term and lower
+   variance than adding unnecessary suffix ratios. It is generally biased for
+   an outcome-level term whose sampled reward or advantage depends on the
+   suffix.
+3. **Token-IS:** much lower variance under bounded per-token terms, but prefix
    or occupancy bias remains even before any truncation is applied.
-3. **TIS:** caps tail influence and usually lowers variance, while adding
+4. **TIS:** caps tail influence and usually lowers variance, while adding
    \\(\mathbb E_\mu[(\min(R,C)-R)F]\\) truncation bias. Seq-TIS broadcasts one
    capped response weight to every token; Token-TIS adds truncation bias on top
    of the token approximation.
-4. **MIS:** bounds the accepted IS weight and removes suspected bad-tail data,
+5. **MIS:** bounds the accepted IS weight and removes suspected bad-tail data,
    but sacrifices sample efficiency. For Seq-MIS its bias is exactly the omitted
-   target-tail contribution, \\(-\mathbb E_q[F\mathbf1\{R>C\}]\\).
-5. **RS:** can reject on a more robust or length-normalized statistic, but is a
+   target-tail contribution, \\(-\mathbb E_q[F\mathbb{I}[R>C]]\\).
+6. **RS:** can reject on a more robust or length-normalized statistic, but is a
    selection mechanism rather than off-policy correction. Geo-RS avoids a raw
    product threshold's length scale, yet can miss localized token outliers or
    cancellation; it is often paired with Token-TIS to obtain a sequence gate
    plus local weights.
+
+<figure class="triangle-figure">
+  <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Two-panel bias-variance diagram. The first panel shows that variance exposure typically increases from token to prefix to sequence correction: prefix IS is the minimum exact horizon for a prefix-measurable causal term, while sequence IS is required for an arbitrary response-level term. The second panel shows raw IS retaining the most tail variance with no operator-induced bias, TIS capping the tail, MIS deleting it, and pure rejection sampling as selection rather than change of measure.">
+  <figcaption>
+    Figure 3. Bias–variance has two independent sources. Ratio horizon controls
+    which estimand is exactly corrected and how much weight dispersion is
+    accumulated; the tail operator controls how far the estimator departs from
+    raw change of measure. Positions are schematic rather than quantitative.
+  </figcaption>
+</figure>
 
 These rankings require qualifications. Bounds such as polynomial token-level
 variance or capped sequence-level variance assume bounded score and
@@ -544,12 +589,12 @@ the factorized implementation their behavior-edge coefficients are
 <div class="equation">
 \[
 \omega_t^{\mathrm{IcePop}}
-=B_t\mathbf 1\{\alpha\le B_t\le\beta\},\qquad
+=B_t\mathbb{I}\!\left[\alpha\le B_t\le\beta\right],\qquad
 \omega_t^{\mathrm{KPop}}
-=B_t\mathbf 1\!\left\{
+=B_t\mathbb{I}\!\left[
 D_{\mathrm{KL}}^B(q_t\Vert\mu_t)\le\phi,
 D_{\mathrm{KL}}^B(\mu_t\Vert q_t)\le\phi
-\right\},
+\right],
 \]
 </div>
 

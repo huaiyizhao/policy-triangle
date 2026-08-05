@@ -13,6 +13,8 @@ responsibility:
 - **assets/technical.css** — restrained technical styling
 - **assets/policy-mismatch-intro.svg** — accessible opening illustration
 - **assets/policy-triangle-hero.svg** — detailed policy-triangle figure
+- **assets/is-tail-operators.svg** — correction geometry and tail operators
+- **assets/bias-variance-tradeoff.svg** — exactness and stability trade-offs
 
 GitHub Pages runs Jekyll automatically. If Jekyll is installed locally, preview
 from the repository root with:
