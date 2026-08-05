@@ -143,7 +143,7 @@ A mitigation method occupies one or more coordinates in this solution space.
 Methods that look different may share coordinates; methods with similar names
 may act on different edges or have different gradient semantics.
 
-### 2.1 Three policy anchors and their edges
+### 2.1 Policy anchors, edges, and operators
 
 For prompt \\(x\\), response \\(y=(y_1,\ldots,y_T)\\), and token context
 \\(h_t=(x,y_{\lt t})\\), define three conditional policies:
@@ -173,13 +173,102 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 | Update edge | \\(U=\pi/q\\) | Drift created by the current optimization step relative to its proximal anchor. |
 | Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch. |
 
+The three operator classes differ by gradient semantics rather than by the
+names used in a particular implementation.
+
+<div class="table-wrap" markdown="1">
+
+| Operator | Definition | Gradient semantics | Mitigation role |
+|---|---|---|---|
+| Mask \\(\mathrm M\\) | \\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\\) | Detached | **Select:** admit or reject a token, sequence, or group using a ratio band, divergence, age, or metadata. |
+| Weight \\(\mathrm W\\) | \\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\\) | Detached | **Reweight:** change measure or influence using raw, truncated, tapered, or self-normalized importance sampling. |
+| Shaper \\(\mathrm C\\) | Enters the loss through \\(\pi_\theta\\) | Differentiable | **Constrain:** reshape the current update using clipping, smooth saturation, a divergence penalty, or a trust-region geometry. |
+
+</div>
+
+Parameter dependence gives the edges a natural, but not exclusive, division of
+labor:
+
+<div class="table-wrap" markdown="1">
+
+| Edge | Dependence during an update | Canonical attachments |
+|---|---|---|
+| \\(B=q/\mu\\) | Frozen when \\(q\\) and \\(\mu\\) are fixed | \\(\mathrm M(B),\mathrm W(B)\\): admission and behavior correction. A standalone \\(\mathrm C(B)\\) has zero gradient; used as a coefficient, it is a detached weight. |
+| \\(U=\pi/q\\) | Changes with \\(\theta\\) | \\(\mathrm C(U)\\): proximal update shaping. Detached \\(\mathrm M(U)\\) or \\(\mathrm W(U)\\) are also possible, but become dynamic update-drift rules. |
+| \\(E=\pi/\mu\\) | Changes with \\(\theta\\) and conflates both gaps | \\(\mathrm M(E),\mathrm W(E),\mathrm C(E)\\) are all available, at the cost of losing attribution between rollout mismatch and update drift. |
+
+</div>
+
+The canonical factorized composition is therefore
+
+<div class="equation">
+\[
+\boxed{
+\mathrm M(B)\,\mathrm W(B)\,\mathrm C(U)
+}
+\qquad
+\text{admit/correct on }B\text{, shape the update on }U.
+\]
+</div>
+
+Here either detached operator may be the identity when no filtering or
+reweighting is required. A shaper may also be conditioned on behavior
+mismatch, \\(\mathrm C(U;B)\\), while still acting through the trainable edge
+\\(U\\).
+
+On the direct edge, the clean single-ratio families are
+
+<div class="equation">
+\[
+\begin{aligned}
+\mathrm M(E)
+& &&\text{pure selection},\\
+\mathrm W(E)\quad\text{or}\quad \mathrm M(E)\mathrm W(E)
+& &&\text{detached weighting or masked IS},\\
+\mathrm C(E)\quad\text{or}\quad \mathrm M(E)\mathrm C(E)
+& &&\text{coupled shaping, optionally pre-filtered}.
+\end{aligned}
+\]
+</div>
+
+Using \\(\mathrm W(E)\mathrm C(E)\\), with or without \\(\mathrm M(E)\\), is
+not the default change-of-measure construction. If both \\(\mathrm W\\) and
+\\(\mathrm C\\) reduce to one factor of \\(E\\) in their linear limit, their
+product reduces to \\(E^2\\); such a design requires a deliberate alternative
+interpretation rather than being counted as one correction.
+
+PPO's effective token coefficient is advantage-sign dependent:
+
+<div class="equation">
+\[
+\mathrm C^{\mathrm{PPO}}(X,\hat A)=
+X\,\mathbb{I}\!\left[
+(\hat A\ge0 \land X\le1+\epsilon_+)
+\;\lor\;
+(\hat A&lt;0 \land X\ge1-\epsilon_-)
+\right].
+\tag{2}
+\]
+</div>
+
+Here \\(\mathbb{I}[\cdot]\\) denotes an indicator: it equals one when its
+condition is true and zero otherwise. Selecting the clipped branch removes
+gradient in a particular advantage-dependent direction; this differs from
+truncating a detached importance weight. DAPO changes the sign-dependent bounds
+([Yu et al., 2025](https://arxiv.org/abs/2503.14476)). GSPO is also a shaper:
+it replaces the token ratio with a length-normalized sequence-geometric ratio,
+giving \\(\mathrm C_{\mathrm{geo}}(E)\\) in a coupled topology or
+\\(\mathrm C_{\mathrm{geo}}(U)\\) after factorization
+([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
+
 <figure class="triangle-figure">
-  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle: behavior policy mu, proximal policy q, and current policy pi connected by B, U, and E equals B times U, alongside mask, weight, and clip operators. Representative cards map IS, rejection sampling, IcePop, and KPop by edge, operator, and geometry.">
+  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle. The behavior edge B is canonically associated with mask and weight, the update edge U with a differentiable shaper, and the direct edge E with mask, weight, or shaper. Representative cards map IS, rejection sampling, IcePop, and KPop by edge, operator, and geometry.">
   <figcaption>
     Figure 1. The mitigation solution space. The triangle identifies where
-    mismatch is measured; operators identify what is done; geometry identifies
-    the scale of the intervention. Representative cards map methods from
-    Section 2.6; multi-attachment methods can occupy more than one edge.
+    mismatch is measured and shows each edge's canonical operator attachments;
+    geometry identifies the scale of the intervention. Representative cards
+    map methods from Section 2.5. The edge labels are defaults, not prohibitions:
+    detached dynamic masks or weights may also read \\(U\\).
   </figcaption>
 </figure>
 
@@ -191,7 +280,8 @@ proximal forward pass but loses causal attribution.
 
 **Decoupled.** Keep a distinct frozen \\(q\\). The learner can correct rollout
 mismatch on \\(B\\) while constraining the current update on \\(U\\), typically as
-\\(\mathrm W(B)\mathrm C(U)\\).
+\\(\mathrm M(B)\mathrm W(B)\mathrm C(U)\\), with an identity mask when no
+admission filter is required.
 
 For PPO clipping, the two constructions can be written side by side. A coupled
 objective attaches the shaper to the direct edge:
@@ -250,45 +340,11 @@ approximates it by interpolating behavior and current log-probabilities to avoid
 an additional model forward pass while retaining the factorization \\(E=BU\\)
 ([Li et al., 2025](https://arxiv.org/abs/2512.06547)).
 
-### 2.3 Mitigation operators: select, reweight, or constrain
+### 2.3 Correction geometry and detached tail treatments
 
-For any edge \\(X\in\{B,U,E\}\\), distinguish operations by their gradient
-semantics rather than by their names in a particular implementation.
-
-<div class="table-wrap" markdown="1">
-
-| Operator | Definition | Gradient semantics | Mitigation role |
-|---|---|---|---|
-| Mask \\(\mathrm M\\) | \\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\\) | Detached | **Select:** admit or reject a token, sequence, or group using a ratio band, divergence, age, or metadata. |
-| Weight \\(\mathrm W\\) | \\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\\) | Detached | **Reweight:** change measure or influence using raw, truncated, tapered, or self-normalized importance sampling. |
-| Shaper \\(\mathrm C\\) | Enters the loss through \\(\pi_\theta\\) | Differentiable | **Constrain:** reshape the current update using clipping, smooth gates, or divergence geometry. |
-
-</div>
-
-PPO's effective token coefficient is advantage-sign dependent:
-
-<div class="equation">
-\[
-\mathrm C^{\mathrm{PPO}}(X,\hat A)=
-X\,\mathbb{I}\!\left[
-(\hat A\ge0 \land X\le1+\epsilon_+)
-\;\lor\;
-(\hat A&lt;0 \land X\ge1-\epsilon_-)
-\right].
-\tag{2}
-\]
-</div>
-
-Here \\(\mathbb{I}[\cdot]\\) denotes an indicator: it equals one when its
-condition is true and zero otherwise.
-
-Selecting the clipped branch removes gradient in a particular direction. This
-differs from truncating a detached importance weight. DAPO changes the
-sign-dependent bounds ([Yu et al., 2025](https://arxiv.org/abs/2503.14476));
-GSPO replaces the token ratio with a length-normalized sequence-geometric ratio
-([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
-
-### 2.4 Correction geometry and tail operators
+This section expands the rollout-side \\(\mathrm M/\mathrm W\\) choices. The
+optimizer-side shaper \\(\mathrm C\\) is orthogonal and may be composed with
+any accepted and weighted contribution.
 
 Token/sequence and IS/TIS/MIS/RS answer different questions. The first pair
 chooses **which probability object is measured**; the second chooses **what is
@@ -480,7 +536,7 @@ fixed threshold can also create length-conditioned truncation or rejection, so
 ESS and acceptance rates should always be reported by response length.
 Finally, detached TIS is not PPO clipping: TIS caps a statistical weight,
 whereas PPO uses an advantage-dependent differentiable shaper as described in
-Section 2.3.
+Section 2.1.
 
 A broad class of critic-free policy-loss gradients can now be read as an
 explicit composition:
@@ -499,7 +555,7 @@ A concrete attachment is specified by
 \\((\text{edge},\text{operator},\text{scope},\text{statistic},
 \text{sign rule},\text{normalization})\\).
 
-### 2.5 Combining mitigation mechanisms
+### 2.4 Combining mitigation mechanisms
 
 The factorization \\(E=BU\\) does not make interventions interchangeable. Where
 an operator is attached determines what mismatch it sees, how often it must be
@@ -559,7 +615,7 @@ This is an implementation diagnostic, not a correctness or unbiasedness
 criterion. Clipping, masking, geometric aggregation, and self-normalization may
 deliberately move an estimator away from that limit.
 
-### 2.6 Mapping existing methods into the solution space {#taxonomy}
+### 2.5 Mapping existing methods into the solution space {#taxonomy}
 
 The table maps representative methods by topology and by their dominant
 solution-space coordinates. It isolates policy-mismatch mitigation and does not

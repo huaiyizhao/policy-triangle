@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 930" role="img" aria-labelledby="hero-title hero-desc">
   <title id="hero-title">The policy triangle in LLM reinforcement learning</title>
-  <desc id="hero-desc">A graphical abstract connecting the behavior, proximal, and current policies through the ratios B, U, and E equals B times U, with mask, weight, and clip operators. Representative coordinate cards place IS, rejection sampling, IcePop, and KPop in the edge, operator, and geometry solution space.</desc>
+  <desc id="hero-desc">A graphical abstract connecting behavior, proximal, and current policies through the ratios B, U, and E equals B times U. Canonical edge attachments place masks and weights on B, shapers on U, and masks, weights, or shapers on E. Representative coordinate cards place IS, rejection sampling, IcePop, and KPop in the edge, operator, and geometry solution space.</desc>
 
   <defs>
     <pattern id="dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -32,17 +32,32 @@
     <path d="M738 514 L588 278" fill="none" stroke="#c66d0a" stroke-width="7" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
     <path d="M216 514 L471 275" fill="none" stroke="#19845d" stroke-width="7" stroke-linecap="round" marker-end="url(#arrow-green)"/>
 
-    <g transform="translate(390 526)">
-      <rect width="178" height="58" rx="29" fill="#eef6fb" stroke="#2878ad" stroke-width="2"/>
-      <text x="89" y="37" text-anchor="middle" fill="#205f8b" font-family="Georgia, 'Times New Roman', serif" font-size="28">B = q / μ</text>
+    <g transform="translate(370 510)">
+      <rect width="218" height="90" rx="18" fill="#eef6fb" stroke="#2878ad" stroke-width="2"/>
+      <text x="109" y="34" text-anchor="middle" fill="#205f8b" font-family="Georgia, 'Times New Roman', serif" font-size="27">B = q / μ</text>
+      <line x1="18" y1="45" x2="200" y2="45" stroke="#c7dce9"/>
+      <rect x="24" y="55" width="78" height="24" rx="12" fill="#e5f2fa" stroke="#2878ad"/>
+      <text x="63" y="72" text-anchor="middle" fill="#205f8b" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">M · MASK</text>
+      <rect x="116" y="55" width="78" height="24" rx="12" fill="#fff3e3" stroke="#c66d0a"/>
+      <text x="155" y="72" text-anchor="middle" fill="#8f4c05" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">W · WEIGHT</text>
     </g>
-    <g transform="translate(620 351)">
-      <rect width="174" height="58" rx="29" fill="#fff7ee" stroke="#c66d0a" stroke-width="2"/>
-      <text x="87" y="37" text-anchor="middle" fill="#8f4c05" font-family="Georgia, 'Times New Roman', serif" font-size="28">U = π / q</text>
+    <g transform="translate(601 331)">
+      <rect width="218" height="90" rx="18" fill="#fff7ee" stroke="#c66d0a" stroke-width="2"/>
+      <text x="109" y="34" text-anchor="middle" fill="#8f4c05" font-family="Georgia, 'Times New Roman', serif" font-size="27">U = π / q</text>
+      <line x1="18" y1="45" x2="200" y2="45" stroke="#ecd6bc"/>
+      <rect x="58" y="55" width="102" height="24" rx="12" fill="#eaf6f1" stroke="#19845d"/>
+      <text x="109" y="72" text-anchor="middle" fill="#126746" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">C · SHAPER</text>
     </g>
-    <g transform="translate(207 350)">
-      <rect width="236" height="58" rx="29" fill="#eef8f4" stroke="#19845d" stroke-width="2"/>
-      <text x="118" y="37" text-anchor="middle" fill="#126746" font-family="Georgia, 'Times New Roman', serif" font-size="27">E = π / μ = BU</text>
+    <g transform="translate(180 329)">
+      <rect width="276" height="92" rx="18" fill="#eef8f4" stroke="#19845d" stroke-width="2"/>
+      <text x="138" y="34" text-anchor="middle" fill="#126746" font-family="Georgia, 'Times New Roman', serif" font-size="26">E = π / μ = BU</text>
+      <line x1="18" y1="45" x2="258" y2="45" stroke="#c9e1d8"/>
+      <rect x="20" y="56" width="70" height="24" rx="12" fill="#e5f2fa" stroke="#2878ad"/>
+      <text x="55" y="73" text-anchor="middle" fill="#205f8b" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700">M · MASK</text>
+      <rect x="103" y="56" width="70" height="24" rx="12" fill="#fff3e3" stroke="#c66d0a"/>
+      <text x="138" y="73" text-anchor="middle" fill="#8f4c05" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700">W · WEIGHT</text>
+      <rect x="186" y="56" width="70" height="24" rx="12" fill="#eaf6f1" stroke="#19845d"/>
+      <text x="221" y="73" text-anchor="middle" fill="#126746" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700">C · SHAPER</text>
     </g>
 
     <g transform="translate(90 520)">
@@ -100,8 +115,9 @@
         <path d="M2 30 C11 30 11 7 20 7 C29 7 29 30 36 30" fill="none" stroke="#79c5aa" stroke-width="3" stroke-linecap="round"/>
         <line x1="2" y1="35" x2="36" y2="35" stroke="#79c5aa" stroke-width="2"/>
       </g>
-      <text x="72" y="31" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">clip</text>
-      <text x="72" y="53" fill="#aeb9c3" font-family="Arial, Helvetica, sans-serif" font-size="15">shape update · differentiable</text>
+      <text x="72" y="28" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">shaper</text>
+      <text x="72" y="49" fill="#aeb9c3" font-family="Arial, Helvetica, sans-serif" font-size="14">shape update · differentiable</text>
+      <text x="72" y="64" fill="#79c5aa" font-family="Arial, Helvetica, sans-serif" font-size="11">clip · smooth · divergence</text>
     </g>
 
     <line x1="34" y1="382" x2="380" y2="382" stroke="#40515d"/>
@@ -113,7 +129,7 @@
   <!-- Representative method coordinates -->
   <g transform="translate(82 682)" font-family="Arial, Helvetica, sans-serif">
     <rect width="1276" height="184" rx="12" fill="#f6f8fa" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="22" y="31" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">REPRESENTATIVE COORDINATES FROM §2.6 · EDGE × OPERATOR × GEOMETRY</text>
+    <text x="22" y="31" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">REPRESENTATIVE COORDINATES FROM §2.5 · EDGE × OPERATOR × GEOMETRY</text>
 
     <g transform="translate(22 49)">
       <rect width="286" height="108" rx="8" fill="#fff9f2" stroke="#c66d0a" stroke-width="2"/>
