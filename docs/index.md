@@ -5,7 +5,7 @@ short_title: The Policy Triangle
 subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
 description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
-date: 2026-08-04
+date: 2026-08-05
 ---
 
 <figure class="hero-figure">
@@ -174,11 +174,12 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 | Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch. |
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle: behavior policy mu, proximal policy q, and current policy pi connected by B, U, and E equals B times U, alongside mask, weight, and clip operators.">
+  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle: behavior policy mu, proximal policy q, and current policy pi connected by B, U, and E equals B times U, alongside mask, weight, and clip operators. Representative cards map IS, rejection sampling, IcePop, and KPop by edge, operator, and geometry.">
   <figcaption>
     Figure 1. The mitigation solution space. The triangle identifies where
     mismatch is measured; operators identify what is done; geometry identifies
-    the scale of the intervention.
+    the scale of the intervention. Representative cards map methods from
+    Section 2.6; multi-attachment methods can occupy more than one edge.
   </figcaption>
 </figure>
 
@@ -531,10 +532,37 @@ sampling, or systems optimizations.
 | [TIS](https://doi.org/10.1198/106186008X320456) / rollout IS | Either | \\(\mathrm W_{\mathrm{tok/seq}}(B\text{ or }E)\\) | Raw or truncated detached weights trade change-of-measure fidelity for variance control. |
 | MIS | Either | \\(\mathrm M_{\mathrm{tok/seq}}(B\text{ or }E)\mathrm W_{\mathrm{raw}}(B\text{ or }E)\\), optional \\(\mathrm C\\) | A hard mask removes the tail; accepted samples retain their raw IS weight. |
 | RS / Geo-RS | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional separate \\(\mathrm W\\) and \\(\mathrm C\\) | Pure selection is orthogonal to weighting; a geometric gate is length normalized but is not an IS ratio. |
-| [IcePop](https://arxiv.org/abs/2510.18855) / [KPop](https://ringtech.notion.site/kpop) | Usually direct | \\(\mathrm M_{\mathrm{tok}}(E)\\) plus a base loss | IcePop uses a ratio region; KPop uses bidirectional binary-KL geometry sensitive to absolute probability. |
+| [IcePop](https://arxiv.org/abs/2510.18855) | Factorized | \\(\mathrm M^{\mathrm{ratio}}_{\mathrm{tok}}(B)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | A two-sided ratio mask admits a token, the admitted token retains raw behavior correction, and PPO shapes update drift. |
+| [KPop](https://ringtech.notion.site/kpop) | Factorized | \\(\mathrm M^{\mathrm{biKL}}_{\mathrm{tok}}(\mu,q)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | KPop replaces IcePop's fixed ratio band with bidirectional binary-KL geometry sensitive to absolute token probability. |
 | [DPPO](https://arxiv.org/abs/2602.04879) / [TRM](https://arxiv.org/abs/2512.23075) | Direct | Divergence \\(\mathrm M(E)\\) or \\(\mathrm C(E)\\) | Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence. |
 
 </div>
+
+The outside-region semantics of IcePop and KPop are masks, not truncation. In
+the factorized implementation their behavior-edge coefficients are
+
+<div class="equation">
+\[
+\omega_t^{\mathrm{IcePop}}
+=B_t\mathbf 1\{\alpha\le B_t\le\beta\},\qquad
+\omega_t^{\mathrm{KPop}}
+=B_t\mathbf 1\!\left\{
+D_{\mathrm{KL}}^B(q_t\Vert\mu_t)\le\phi,
+D_{\mathrm{KL}}^B(\mu_t\Vert q_t)\le\phi
+\right\},
+\]
+</div>
+
+where \\(D_{\mathrm{KL}}^B\\) is binary KL on “the sampled token” versus “all
+other tokens.” Outside either admission region, \\(\omega_t=0\\): the token
+contributes no policy gradient. Inside, the raw \\(B_t\\) weight remains, and
+PPO separately shapes \\(U_t\\). Truncation would instead replace an outlying
+\\(B_t\\) by a boundary value and keep updating it. This mask–weight
+composition is explicit in the IcePop objective and in the
+[AReaL IcePop/KPop integration](https://github.com/areal-project/AReaL/pull/1405).
+The sources sometimes use “clipping ratio” informally for the fraction of
+filtered tokens; that reporting term does not change the zero-policy-gradient
+mask defined by the loss.
 
 #### What the mapping clarifies
 
@@ -546,6 +574,9 @@ sampling, or systems optimizations.
 3. **A decoupled filter may read any raw edge.** \\(\mathrm M(B)\\) is static when
    \\(q\\) is frozen, whereas \\(\mathrm M(U)\\) and \\(\mathrm M(E)\\) generally
    change as \\(\pi\\) is updated.
+4. **IcePop and KPop are masked IS, not TIS.** Both reject an out-of-region
+   token and retain \\(B\\) for an accepted token; KPop changes the admission
+   geometry from a fixed ratio band to bidirectional binary KL.
 
 #### Relation to nearby views
 
