@@ -846,60 +846,40 @@ proximal forward pass is expensive, or the system does not retain a distinct
 
 ### 3.3 A practical decision flow
 
-The decision flow follows the derivation of the reference estimator rather
-than a qualitative bias–variance ranking:
+The theory supplies a sequence, not a universal winner: the
+performance-difference identity fixes the local \\(q\\)-surrogate; change of
+measure fixes the admissible ratio horizon; robust estimation motivates tail
+control; proximal optimization shapes \\(U\\); and off-policy value estimation
+determines whether \\(\hat A\\) is credible.
 
-Its theoretical basis is layered. The performance-difference identity and
-TRPO determine the local \\(q\\)-surrogate; Radon–Nikodym change of measure and
-per-decision IS determine the exact ratio horizon; robust estimation motivates
-caps and masks when raw weights are unusable; proximal optimization determines
-how \\(U\\) is shaped; and off-policy value estimation determines whether the
-credit term targets \\(A^q\\). These results constrain the valid choices, but
-do not produce a distribution-free best threshold.
+<figure class="triangle-figure">
+  <img src="{{ '/assets/estimator-decision-flow.svg' | relative_url }}" alt="Decision flow for configuring the unified estimator. First choose coupled or factorized topology. Before tuning operators, verify local-surrogate validity, behavior-policy coverage, and credit alignment. Then choose ratio horizon and classify the behavior-ratio tail as usable, high-leverage but valid, or untrusted. Finally attach a proximal shaper to U and monitor estimator diagnostics.">
+  <figcaption>
+    Figure 3. A conditional decision flow for the unified estimator. Invalid
+    support, a stale proximal anchor, or badly misaligned credit calls for new
+    data or a new reference—not a more elaborate tail operator. Thresholds
+    remain empirical within the surviving branch.
+  </figcaption>
+</figure>
 
-1. **Fix the target and credit.** Decide whether the update targets the local
-   \\(q\\)-surrogate and whether \\(A^q\\) is available. If only a sampled
-   terminal return is available, record that future/credit realignment is
-   still being approximated.
-2. **Check whether the local surrogate is still credible.** If \\(\pi\\) has
-   moved far from \\(q\\), changing \\(M\\) or \\(W\\) cannot repair the local
-   TRPO/PPO model. Refresh \\(q\\), reduce optimization epochs, or tighten the
-   update before refining rollout correction.
-3. **Check coverage from \\(\mu\\) to \\(q\\).** If relevant \\(q\\)-actions have
-   no support under \\(\mu\\), no IS variant can recover them. New rollouts are
-   required. With overlap, use weight ESS and the distribution of \\(\log B\\)
-   to decide whether raw products are statistically usable.
-4. **Choose the shortest ratio horizon justified by the integrand.** Correct
-   \\(A_t^q s_t\\) needs the prefix ratio \\(B_{1:t}\\); an arbitrary
-   response-level quantity needs \\(B_{1:T}\\). Token \\(B_t\\) is a deliberate
-   lower-variance occupancy approximation.
-5. **Classify the tail.** Keep raw IS when its ESS is adequate. Cap valid but
-   high-leverage observations with TIS. Use MIS or RS when the tail represents
-   data that should not be trusted, accepting that a hard mask changes the
-   target. A geometric or mean-\\(k_3\\) gate is a length-normalized diagnostic,
-   not change of measure.
-6. **Shape only the trainable move.** In a factorized design, apply PPO/GSPO to
-   \\(U=\pi/q\\). Use \\(E=\pi/\mu\\) directly when \\(q=\mu\\), or when total
-   endpoint mismatch is intentionally being gated despite losing attribution.
+Read the flow in four passes:
 
-This produces concrete defaults rather than a universal winner:
-
-| Operating condition | Estimator configuration | Interpretation |
-|---|---|---|
-| Fresh coupled rollout, \\(q=\mu\\) | \\(\widetilde\Psi_{\mathrm{PPO}}(E,\hat A^{\mathrm{roll}})\\) | Standard PPO/GRPO-style bypass; no separate behavior correction. |
-| Coupled rollout with anomalous responses | \\(M(S(E))\widetilde\Psi_{\mathrm{PPO}}(E,\hat A^{\mathrm{roll}})\\) | Robust pre-filter plus PPO; selection, not IS correction. |
-| Mild decoupled staleness | \\(\widetilde W_{\mathrm{tok}}(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A^{\mathrm{roll}})\\) | Practical low-variance approximation; prefix occupancy remains approximate. |
-| Heavy but credible behavior-ratio tail | \\(\widetilde W_{\mathrm{TIS}}(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A)\\) | Cap leverage while keeping samples. |
-| Suspected anomalous rollouts | \\(M(S(B))\widetilde W(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A)\\) | Separate data admission, behavior weighting, and proximal shaping. |
-| High fidelity to the \\(q\\)-surrogate is required | \\(\widetilde W_{\mathrm{prefix/seq}}(B)\,U A^q\\) | Use the exact horizon allowed by credit and accept its variance cost. |
-| Credit mismatch dominates | Improve \\(\hat A^{q\leftarrow\mu}\\) before tuning the ratio tail | Ratio operators cannot repair a continuation-value error. |
-
-Thresholds remain empirical within a chosen configuration. At minimum, report
-weight ESS, acceptance rate, clip fraction, gradient variance, and the
-distributions of \\(\log B\\) and \\(\log U\\), all stratified by response
-length and policy age. Correlation between the gate statistic and advantage is
-especially important: rejecting high-credit samples can rotate the gradient,
-not merely reduce its scale.
+1. **Choose the topology.** If \\(q=\mu\\), start with coupled PPO/GRPO on
+   \\(E=U\\); add \\(M(S(E))\\) only when an explicit anomaly filter is wanted.
+   Otherwise keep data correction on \\(B\\) and update shaping on \\(U\\).
+2. **Fail fast on invalid inputs.** If \\(\pi\\) is no longer near \\(q\\),
+   refresh the anchor or reduce optimization. If \\(\mu\\) does not cover
+   \\(q\\), collect new rollouts. If credit mismatch dominates, improve
+   \\(\hat A^{q\leftarrow\mu}\\). None of these failures is repaired by TIS or
+   RS.
+3. **Configure the behavior side.** Choose the shortest justified horizon:
+   prefix with \\(A^q\\), sequence for an arbitrary response-level integrand,
+   or token as a practical occupancy approximation. Keep raw IS when ESS is
+   adequate, use TIS for valid high-leverage tails, and use a mask/RS when the
+   rollout itself is not trusted.
+4. **Attach the update and monitor.** Apply PPO/GSPO to \\(U=\pi/q\\), then
+   report ESS, acceptance rate, clip fraction, \\(\log B\\), \\(\log U\\), and
+   gate–advantage correlation by response length and policy age.
 
 ### 3.4 Open configurations suggested by the estimator
 

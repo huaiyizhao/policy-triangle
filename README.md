@@ -12,6 +12,7 @@ learning. The policy triangle is retained as an auxiliary ratio-placement map.
 - `docs/assets/policy-mismatch-intro.svg` — opening illustration
 - `docs/assets/policy-triangle-hero.svg` — compact ratio-placement figure
 - `docs/assets/is-tail-operators.svg` — estimator statistic, mask, and weight choices
+- `docs/assets/estimator-decision-flow.svg` — practical estimator decision flow
 - `docs/assets/bias-variance-tradeoff.svg` — appendix-level statistical intuition
 
 ## Preview

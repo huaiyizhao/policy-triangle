@@ -14,6 +14,7 @@ responsibility:
 - **assets/policy-mismatch-intro.svg** — accessible opening illustration
 - **assets/policy-triangle-hero.svg** — compact ratio-placement figure
 - **assets/is-tail-operators.svg** — estimator statistic, mask, and weight choices
+- **assets/estimator-decision-flow.svg** — practical estimator decision flow
 - **assets/bias-variance-tradeoff.svg** — appendix-level statistical intuition
 
 GitHub Pages runs Jekyll automatically. If Jekyll is installed locally, preview
