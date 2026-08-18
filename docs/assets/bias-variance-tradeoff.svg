@@ -1,134 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 840" role="img" aria-labelledby="bv-title bv-desc">
-  <title id="bv-title">Bias–variance trade-offs in rollout correction</title>
-  <desc id="bv-desc">A two-panel academic diagram. Panel A shows how variance exposure typically increases from token to prefix to sequence ratios and identifies the minimum exact horizon for causal and response-level estimands. Panel B shows that raw importance sampling retains the full tail, truncated importance sampling caps it, masked importance sampling removes it, and pure rejection sampling is selection rather than change of measure.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 850" role="img" aria-labelledby="bv-title bv-desc">
+  <title id="bv-title">Bias versus variance for rollout-correction estimators</title>
+  <desc id="bv-desc">A schematic bias-variance map relative to the unclipped q-surrogate with aligned q-policy advantage. Prefix importance sampling and sequence importance sampling lie near the zero-bias boundary, with sequence importance sampling having higher variance. Token importance sampling has lower variance but occupancy bias. Truncation, masking, and geometric rejection move estimators toward lower variance and higher bias. Positions are qualitative and depend on thresholds, response length, and correlation with the ratio tail.</desc>
 
   <defs>
-    <marker id="trend-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="#7b858f"/>
-    </marker>
-    <marker id="blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0 0 L10 5 L0 10 z" fill="#2878ad"/>
     </marker>
   </defs>
 
-  <rect width="1440" height="840" fill="#f6f8fa"/>
-  <rect x="34" y="34" width="1372" height="772" rx="10" fill="#ffffff" stroke="#d8dde2" stroke-width="2"/>
+  <rect width="1440" height="850" fill="#f6f8fa"/>
+  <rect x="34" y="34" width="1372" height="782" rx="12" fill="#ffffff" stroke="#d8dde2" stroke-width="2"/>
 
   <g font-family="Arial, Helvetica, sans-serif">
-    <text x="70" y="78" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="33">Bias–variance has two independent design axes</text>
-    <text x="70" y="108" fill="#59636e" font-size="17">Ratio horizon determines exactness for a chosen estimand; the tail operator determines how much raw-weight dispersion remains.</text>
+    <text x="72" y="82" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="34">Bias–variance trade-offs relative to the q-surrogate</text>
+    <text x="72" y="116" fill="#59636e" font-size="16">Lower-left is preferable; every position is schematic rather than a measured numerical ranking.</text>
 
-    <!-- Panel A -->
-    <rect x="62" y="139" width="653" height="630" rx="8" fill="#fbfcfd" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="84" y="173" fill="#2878ad" font-size="14" font-weight="700" letter-spacing="2">A · RATIO HORIZON</text>
-    <text x="84" y="203" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="22">Longer products expose more weight dispersion</text>
-
-    <!-- Panel A plot -->
-    <g>
-      <line x1="132" y1="433" x2="678" y2="433" stroke="#aeb6bf" stroke-width="1.5" marker-end="url(#trend-arrow)"/>
-      <line x1="132" y1="433" x2="132" y2="238" stroke="#aeb6bf" stroke-width="1.5" marker-end="url(#trend-arrow)"/>
-      <line x1="132" y1="371" x2="668" y2="371" stroke="#e4e7ea" stroke-width="1"/>
-      <line x1="132" y1="309" x2="668" y2="309" stroke="#e4e7ea" stroke-width="1"/>
-      <line x1="132" y1="247" x2="668" y2="247" stroke="#e4e7ea" stroke-width="1"/>
-
-      <text x="97" y="340" transform="rotate(-90 97 340)" text-anchor="middle" fill="#59636e" font-size="13" font-weight="700" letter-spacing="1">VARIANCE EXPOSURE</text>
-      <text x="405" y="477" text-anchor="middle" fill="#59636e" font-size="13" font-weight="700" letter-spacing="1">CORRECTION HORIZON</text>
-
-      <path d="M188 405 C276 397 328 375 397 350 C493 315 548 270 626 249" fill="none" stroke="#2878ad" stroke-width="4"/>
-      <circle cx="188" cy="405" r="8" fill="#ffffff" stroke="#2878ad" stroke-width="4"/>
-      <circle cx="397" cy="350" r="8" fill="#ffffff" stroke="#2878ad" stroke-width="4"/>
-      <circle cx="626" cy="249" r="8" fill="#ffffff" stroke="#2878ad" stroke-width="4"/>
-
-      <text x="188" y="391" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="19">r<tspan baseline-shift="sub" font-size="13">t</tspan></text>
-      <text x="397" y="334" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="19">R<tspan baseline-shift="sub" font-size="13">1:t</tspan></text>
-      <text x="626" y="232" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="19">R<tspan baseline-shift="sub" font-size="13">1:T</tspan></text>
-
-      <text x="188" y="454" text-anchor="middle" fill="#35404a" font-size="13" font-weight="700">TOKEN</text>
-      <text x="397" y="454" text-anchor="middle" fill="#35404a" font-size="13" font-weight="700">PREFIX</text>
-      <text x="626" y="454" text-anchor="middle" fill="#35404a" font-size="13" font-weight="700">SEQUENCE</text>
-
-      <rect x="451" y="263" width="165" height="43" rx="5" fill="#f4f9fc" stroke="#c7dce9"/>
-      <text x="533" y="281" text-anchor="middle" fill="#2878ad" font-size="12" font-weight="700">DISPERSION ACCUMULATES</text>
-      <text x="533" y="297" text-anchor="middle" fill="#59636e" font-size="11">as log-ratios are added</text>
+    <!-- Operator legend -->
+    <g transform="translate(865 72)">
+      <circle cx="8" cy="8" r="7" fill="#2878ad"/>
+      <text x="22" y="13" fill="#205f8b" font-size="13" font-weight="700">RAW IS</text>
+      <circle cx="108" cy="8" r="7" fill="#c66d0a"/>
+      <text x="122" y="13" fill="#8f4c05" font-size="13" font-weight="700">TIS</text>
+      <circle cx="190" cy="8" r="7" fill="#a53f3f"/>
+      <text x="204" y="13" fill="#8d3232" font-size="13" font-weight="700">MIS</text>
+      <circle cx="280" cy="8" r="7" fill="#19845d"/>
+      <text x="294" y="13" fill="#126746" font-size="13" font-weight="700">RS / GEO-RS</text>
     </g>
 
-    <!-- Panel A exactness rows -->
-    <text x="84" y="500" fill="#59636e" font-size="12" font-weight="700" letter-spacing="1.5">EXACTNESS FOR A FIXED ESTIMAND</text>
-    <text x="304" y="523" text-anchor="middle" fill="#7b858f" font-size="11" font-weight="700" letter-spacing="1">TOKEN</text>
-    <text x="456" y="523" text-anchor="middle" fill="#7b858f" font-size="11" font-weight="700" letter-spacing="1">PREFIX</text>
-    <text x="613" y="523" text-anchor="middle" fill="#7b858f" font-size="11" font-weight="700" letter-spacing="1">SEQUENCE</text>
+    <!-- Plot field -->
+    <rect x="154" y="162" width="1134" height="535" rx="8" fill="#fbfcfd" stroke="#d8dde2" stroke-width="1.5"/>
 
-    <rect x="84" y="532" width="607" height="82" rx="6" fill="#ffffff" stroke="#d8dde2"/>
-    <text x="100" y="555" fill="#17202a" font-size="14" font-weight="700">Causal term</text>
-    <text x="100" y="576" fill="#59636e" font-family="Georgia, 'Times New Roman', serif" font-size="15">f<tspan baseline-shift="sub" font-size="11">t</tspan>(h<tspan baseline-shift="sub" font-size="11">t</tspan>, y<tspan baseline-shift="sub" font-size="11">t</tspan>)</text>
-    <line x1="230" y1="532" x2="230" y2="614" stroke="#e4e7ea"/>
-    <line x1="378" y1="532" x2="378" y2="614" stroke="#e4e7ea"/>
-    <line x1="535" y1="532" x2="535" y2="614" stroke="#e4e7ea"/>
-    <text x="304" y="558" text-anchor="middle" fill="#a53f3f" font-size="13" font-weight="700">OCCUPANCY BIAS</text>
-    <text x="304" y="580" text-anchor="middle" fill="#59636e" font-size="12">prefix stays under μ</text>
-    <rect x="390" y="544" width="133" height="48" rx="5" fill="#eaf4fa" stroke="#2878ad" stroke-width="1.5"/>
-    <text x="456" y="563" text-anchor="middle" fill="#2878ad" font-size="12" font-weight="700">EXACT · MINIMAL</text>
-    <text x="456" y="581" text-anchor="middle" fill="#59636e" font-size="11">future ratios integrate to 1</text>
-    <text x="613" y="558" text-anchor="middle" fill="#2878ad" font-size="13" font-weight="700">EXACT</text>
-    <text x="613" y="580" text-anchor="middle" fill="#59636e" font-size="12">extra weight dispersion</text>
+    <!-- Grid -->
+    <line x1="170" y1="590" x2="1270" y2="590" stroke="#e5e8eb"/>
+    <line x1="170" y1="485" x2="1270" y2="485" stroke="#e5e8eb"/>
+    <line x1="170" y1="380" x2="1270" y2="380" stroke="#e5e8eb"/>
+    <line x1="170" y1="275" x2="1270" y2="275" stroke="#e5e8eb"/>
+    <line x1="380" y1="180" x2="380" y2="680" stroke="#eef0f2"/>
+    <line x1="600" y1="180" x2="600" y2="680" stroke="#eef0f2"/>
+    <line x1="820" y1="180" x2="820" y2="680" stroke="#eef0f2"/>
+    <line x1="1040" y1="180" x2="1040" y2="680" stroke="#eef0f2"/>
 
-    <rect x="84" y="625" width="607" height="82" rx="6" fill="#ffffff" stroke="#d8dde2"/>
-    <text x="100" y="649" fill="#17202a" font-size="14" font-weight="700">Response term</text>
-    <text x="100" y="671" fill="#59636e" font-family="Georgia, 'Times New Roman', serif" font-size="15">F(y<tspan baseline-shift="sub" font-size="11">1:T</tspan>)</text>
-    <line x1="230" y1="625" x2="230" y2="707" stroke="#e4e7ea"/>
-    <line x1="378" y1="625" x2="378" y2="707" stroke="#e4e7ea"/>
-    <line x1="535" y1="625" x2="535" y2="707" stroke="#e4e7ea"/>
-    <text x="304" y="652" text-anchor="middle" fill="#a53f3f" font-size="13" font-weight="700">NOT EXACT</text>
-    <text x="304" y="674" text-anchor="middle" fill="#59636e" font-size="12">trajectory shift remains</text>
-    <text x="456" y="652" text-anchor="middle" fill="#c66d0a" font-size="13" font-weight="700">NOT EXACT IF t &lt; T</text>
-    <text x="456" y="674" text-anchor="middle" fill="#59636e" font-size="12">suffix still sampled from μ</text>
-    <rect x="547" y="637" width="132" height="48" rx="5" fill="#eaf4fa" stroke="#2878ad" stroke-width="1.5"/>
-    <text x="613" y="656" text-anchor="middle" fill="#2878ad" font-size="12" font-weight="700">EXACT · MINIMAL</text>
-    <text x="613" y="674" text-anchor="middle" fill="#59636e" font-size="11">full change of measure</text>
+    <!-- Axes -->
+    <line x1="170" y1="680" x2="1274" y2="680" stroke="#7b858f" stroke-width="2" marker-end="url(#arrow-gray)"/>
+    <line x1="170" y1="680" x2="170" y2="177" stroke="#7b858f" stroke-width="2" marker-end="url(#arrow-gray)"/>
+    <text x="720" y="726" text-anchor="middle" fill="#35404a" font-size="14" font-weight="700" letter-spacing="1.2">BIAS RELATIVE TO THE q-SURROGATE</text>
+    <text x="170" y="710" fill="#59636e" font-size="12" font-weight="700">LOW</text>
+    <text x="1248" y="710" text-anchor="end" fill="#59636e" font-size="12" font-weight="700">HIGH</text>
+    <text x="104" y="430" transform="rotate(-90 104 430)" text-anchor="middle" fill="#35404a" font-size="14" font-weight="700" letter-spacing="1.2">VARIANCE</text>
+    <text x="142" y="674" text-anchor="end" fill="#59636e" font-size="12" font-weight="700">LOW</text>
+    <text x="142" y="190" text-anchor="end" fill="#59636e" font-size="12" font-weight="700">HIGH</text>
 
-    <text x="84" y="741" fill="#59636e" font-size="12">“Unbiased” is a property of estimator + estimand, not of a ratio name alone.</text>
+    <!-- Reference regions -->
+    <rect x="187" y="184" width="84" height="478" rx="8" fill="#eaf4fa" opacity="0.58" stroke="#2878ad" stroke-dasharray="5 5"/>
+    <text x="229" y="205" text-anchor="middle" fill="#2878ad" font-size="10" font-weight="700" letter-spacing="0.8">ZERO-BIAS</text>
+    <text x="229" y="220" text-anchor="middle" fill="#2878ad" font-size="10" font-weight="700" letter-spacing="0.8">BOUNDARY*</text>
 
-    <!-- Panel B -->
-    <rect x="730" y="139" width="648" height="630" rx="8" fill="#fbfcfd" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="752" y="173" fill="#c66d0a" font-size="14" font-weight="700" letter-spacing="2">B · TAIL OPERATOR</text>
-    <text x="752" y="203" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="22">Stability comes from departing from the raw tail</text>
+    <ellipse cx="274" cy="625" rx="86" ry="42" fill="#eaf6f1" stroke="#19845d" stroke-dasharray="6 5"/>
+    <text x="274" y="620" text-anchor="middle" fill="#126746" font-size="12" font-weight="700">DESIRABLE REGION</text>
+    <text x="274" y="638" text-anchor="middle" fill="#59636e" font-size="11">low bias · low variance</text>
 
-    <!-- Panel B plot -->
-    <g>
-      <line x1="813" y1="570" x2="1341" y2="570" stroke="#aeb6bf" stroke-width="1.5" marker-end="url(#trend-arrow)"/>
-      <line x1="813" y1="570" x2="813" y2="243" stroke="#aeb6bf" stroke-width="1.5" marker-end="url(#trend-arrow)"/>
-      <line x1="813" y1="472" x2="1330" y2="472" stroke="#e4e7ea" stroke-width="1"/>
-      <line x1="813" y1="374" x2="1330" y2="374" stroke="#e4e7ea" stroke-width="1"/>
-      <line x1="813" y1="276" x2="1330" y2="276" stroke="#e4e7ea" stroke-width="1"/>
+    <!-- Trade-off arrows -->
+    <path d="M247 244 C350 270 432 326 511 391 C608 466 689 510 782 542" fill="none" stroke="#7b858f" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow-gray)"/>
+    <text x="548" y="310" transform="rotate(31 548 310)" text-anchor="middle" fill="#59636e" font-size="11" font-weight="700">STRONGER SEQUENCE TAIL CONTROL</text>
 
-      <text x="776" y="407" transform="rotate(-90 776 407)" text-anchor="middle" fill="#59636e" font-size="13" font-weight="700" letter-spacing="1">TAIL VARIANCE RETAINED</text>
-      <text x="1078" y="607" text-anchor="middle" fill="#59636e" font-size="12" font-weight="700" letter-spacing="0.8">DEPARTURE FROM RAW CHANGE OF MEASURE / BIAS RISK</text>
+    <path d="M247 371 C331 401 397 452 468 505" fill="none" stroke="#7b858f" stroke-width="1.8" stroke-dasharray="6 6" marker-end="url(#arrow-gray)"/>
+    <path d="M430 574 C508 598 563 619 630 635" fill="none" stroke="#7b858f" stroke-width="1.8" stroke-dasharray="6 6" marker-end="url(#arrow-gray)"/>
 
-      <path d="M873 285 C975 329 1090 421 1209 500" fill="none" stroke="#7b858f" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#trend-arrow)"/>
+    <!-- Raw IS family -->
+    <circle cx="229" cy="242" r="12" fill="#2878ad" stroke="#ffffff" stroke-width="4"/>
+    <text x="253" y="235" fill="#205f8b" font-size="15" font-weight="700">Seq-IS</text>
+    <text x="253" y="253" fill="#59636e" font-size="11">zero bias · highest variance</text>
 
-      <circle cx="873" cy="285" r="12" fill="#2878ad" stroke="#ffffff" stroke-width="4"/>
-      <text x="897" y="267" fill="#2878ad" font-size="15" font-weight="700">IS</text>
-      <text x="897" y="288" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">w(R) = R</text>
-      <text x="897" y="307" fill="#59636e" font-size="12">full tail · zero operator bias</text>
+    <circle cx="229" cy="370" r="12" fill="#2878ad" stroke="#ffffff" stroke-width="4"/>
+    <text x="253" y="363" fill="#205f8b" font-size="15" font-weight="700">Prefix-IS</text>
+    <text x="253" y="381" fill="#59636e" font-size="11">zero bias · fewer ratios</text>
 
-      <circle cx="1048" cy="386" r="12" fill="#c66d0a" stroke="#ffffff" stroke-width="4"/>
-      <text x="1072" y="367" fill="#c66d0a" font-size="15" font-weight="700">TIS</text>
-      <text x="1072" y="389" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">w(R) = min(R, C)</text>
-      <text x="1072" y="408" fill="#59636e" font-size="12">tail capped · sample retained</text>
+    <circle cx="420" cy="573" r="12" fill="#2878ad" stroke="#ffffff" stroke-width="4"/>
+    <text x="444" y="566" fill="#205f8b" font-size="15" font-weight="700">Token-IS</text>
+    <text x="444" y="584" fill="#59636e" font-size="11">low variance · occupancy bias</text>
 
-      <circle cx="1209" cy="500" r="12" fill="#a53f3f" stroke="#ffffff" stroke-width="4"/>
-      <text x="1233" y="481" fill="#a53f3f" font-size="15" font-weight="700">MIS</text>
-      <text x="1233" y="503" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">w(R) = I[R ≤ C] R</text>
-      <text x="1233" y="522" fill="#59636e" font-size="12">tail omitted · lower utilization</text>
-    </g>
+    <!-- TIS family -->
+    <circle cx="510" cy="391" r="12" fill="#c66d0a" stroke="#ffffff" stroke-width="4"/>
+    <text x="534" y="384" fill="#8f4c05" font-size="15" font-weight="700">Seq-TIS</text>
+    <text x="534" y="402" fill="#59636e" font-size="11">tail capped · sample retained</text>
 
-    <!-- RS note -->
-    <rect x="774" y="631" width="560" height="73" rx="7" fill="#f4faf7" stroke="#19845d" stroke-width="1.5" stroke-dasharray="6 4"/>
-    <circle cx="801" cy="657" r="8" fill="#19845d"/>
-    <text x="820" y="654" fill="#19845d" font-size="13" font-weight="700">PURE RS IS OFF THE IS CURVE</text>
-    <text x="820" y="678" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">I[S ∈ A] × base contribution</text>
-    <text x="1125" y="678" fill="#59636e" font-size="12">selection, not change of measure by itself</text>
+    <circle cx="468" cy="505" r="12" fill="#c66d0a" stroke="#ffffff" stroke-width="4"/>
+    <text x="492" y="498" fill="#8f4c05" font-size="15" font-weight="700">Prefix-TIS</text>
+    <text x="492" y="516" fill="#59636e" font-size="11">less dispersion · truncation bias</text>
 
-    <text x="752" y="741" fill="#59636e" font-size="12">Schematic only: realized bias is signed and depends on F, thresholds, and correlation with the ratio tail.</text>
+    <circle cx="640" cy="635" r="12" fill="#c66d0a" stroke="#ffffff" stroke-width="4"/>
+    <text x="664" y="628" fill="#8f4c05" font-size="15" font-weight="700">Token-TIS</text>
+    <text x="664" y="646" fill="#59636e" font-size="11">most local · two bias sources</text>
+
+    <!-- MIS -->
+    <circle cx="790" cy="542" r="12" fill="#a53f3f" stroke="#ffffff" stroke-width="4"/>
+    <text x="814" y="535" fill="#8d3232" font-size="15" font-weight="700">Seq-MIS</text>
+    <text x="814" y="553" fill="#59636e" font-size="11">tail omitted · lower utilization</text>
+
+    <!-- Geometric selection family -->
+    <ellipse cx="1050" cy="585" rx="175" ry="86" fill="#eaf6f1" opacity="0.62" stroke="#19845d" stroke-width="1.7" stroke-dasharray="7 5"/>
+    <text x="1050" y="526" text-anchor="middle" fill="#126746" font-size="11" font-weight="700" letter-spacing="1.1">SELECTION FAMILY · THRESHOLD-DEPENDENT</text>
+
+    <circle cx="985" cy="574" r="12" fill="#19845d" stroke="#ffffff" stroke-width="4"/>
+    <text x="1009" y="568" fill="#126746" font-size="15" font-weight="700">Geo-RS</text>
+    <text x="1009" y="586" fill="#59636e" font-size="11">length-normalized gate</text>
+
+    <circle cx="1118" cy="632" r="12" fill="#19845d" stroke="#ffffff" stroke-width="4"/>
+    <text x="1142" y="626" fill="#126746" font-size="14" font-weight="700">Geo-RS + Token-TIS</text>
+    <text x="1142" y="644" fill="#59636e" font-size="11">gate + local capped weight</text>
+
+    <!-- Reading notes -->
+    <text x="72" y="770" fill="#35404a" font-size="12" font-weight="700">* Reference estimand: the unclipped q-surrogate with correctly aligned A<tspan baseline-shift="super" font-size="9">q</tspan>.</text>
+    <text x="72" y="793" fill="#59636e" font-size="12">Thresholds, response length, credit error, tail correlation, and effective sample size can move every non-exact estimator; arrows show the intended qualitative trade-off only.</text>
   </g>
 </svg>

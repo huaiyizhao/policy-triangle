@@ -5,7 +5,7 @@ short_title: The Policy Triangle
 subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
 description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
-date: 2026-08-18
+date: 2026-08-19
 ---
 
 <figure class="hero-figure">
@@ -711,12 +711,13 @@ The exact TIS and MIS bias terms are recorded in
 [Appendix A.7](#appendix-a7).
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Two-panel bias-variance diagram. The first panel shows that variance exposure typically increases from token to prefix to sequence correction: prefix IS is the minimum exact horizon for a prefix-measurable causal term, while sequence IS is required for an arbitrary response-level term. The second panel shows raw IS retaining the most tail variance with no operator-induced bias, TIS capping the tail, MIS deleting it, and pure rejection sampling as selection rather than change of measure.">
+  <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Schematic bias-versus-variance map relative to the unclipped q-surrogate with aligned A q. Sequence IS and Prefix IS lie on the zero-bias boundary at different variance levels; Token IS has lower variance and occupancy bias. TIS, MIS, Geo-RS, and Geo-RS plus Token-TIS occupy progressively more stable but biased regions, with exact positions depending on thresholds and data.">
   <figcaption>
-    Figure 3. Bias–variance has two independent sources. Ratio horizon controls
-    which estimand is exactly corrected and how much weight dispersion is
-    accumulated; the tail operator controls how far the estimator departs from
-    raw change of measure. Positions are schematic rather than quantitative.
+    Figure 3. Schematic bias–variance trade-offs relative to the unclipped
+    \\(q\\)-surrogate with aligned \\(A^q\\). Raw Prefix-IS and Seq-IS are exact
+    under this reference, but Seq-IS carries unnecessary future-ratio
+    variance. Shorter horizons and stronger tail control generally trade more
+    bias for stability. Positions are qualitative and threshold-dependent.
   </figcaption>
 </figure>
 
