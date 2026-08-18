@@ -5,11 +5,11 @@ short_title: The Policy Triangle
 subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
 description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
-date: 2026-08-05
+date: 2026-08-18
 ---
 
 <figure class="hero-figure">
-  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic overview of asynchronous LLM reinforcement learning: behavior policy mu supplies rollout data and credit, proximal policy q anchors the target advantage, and current policy pi receives the update. Methods are located by edge, operator, geometry, and credit anchor.">
+  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic graphical abstract showing the progression from the exact off-policy policy gradient to the local q-surrogate and its decoupled approximation surfaces: behavior correction B from mu to q, credit realignment toward A q, and proximal update U from q to pi. Existing LLM methods concentrate on B and U, while explicit credit realignment remains comparatively underexplored.">
 </figure>
 
 <div class="abstract" markdown="1">
@@ -200,29 +200,51 @@ the frozen proximal policy, and \\(\pi\\) the current trainable policy. Define
 
 <div class="equation">
 \[
-B_t=\frac{q_t}{\mu_t},
+B_t=\frac{\color{#c66d0a}{q_t}}{\color{#2878ad}{\mu_t}},
 \qquad
-U_t=\frac{\pi_t}{q_t},
+U_t=\frac{\color{#19845d}{\pi_{\theta,t}}}{\color{#c66d0a}{q_t}},
 \qquad
-E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
+E_t=\frac{\color{#19845d}{\pi_{\theta,t}}}{\color{#2878ad}{\mu_t}}=B_tU_t.
 \]
 </div>
 
 Using \\(\mu\\)-data, the exact gradient of the *unclipped* \\(q\\)-surrogate is
 
-<div class="equation">
+<div class="equation key-equation">
+
+<div class="equation-label">Decoupled PPO reference gradient</div>
+
 \[
-g_q(\pi)
-=
+\begin{aligned}
+g_{\color{#c66d0a}{q}}(\color{#19845d}{\pi_\theta})
+={}&
 \sum_{t=1}^{T}
-\mathbb E_{y\sim\mu}
-\left[
-\underbrace{B_{1:t}}_{\text{past: data and occupancy}}
-\underbrace{U_t}_{\text{current update}}
-\underbrace{A_t^q}_{\text{future: reference credit}}
-s_t
-\right].
+\mathbb E_{y\sim\color{#2878ad}{\mu}}
+\Bigg[
+\underbrace{
+\prod_{i=1}^{t}
+\frac{\color{#c66d0a}{q}(y_i\mid h_i)}
+     {\color{#2878ad}{\mu}(y_i\mid h_i)}
+}_{B_{1:t}\;\text{— past/data}}
+\\[-2pt]
+&\qquad\times
+\underbrace{
+\frac{\color{#19845d}{\pi_\theta}(y_t\mid h_t)}
+     {\color{#c66d0a}{q}(y_t\mid h_t)}
+}_{U_t\;\text{— current update}}
+\underbrace{A_t^{\color{#c66d0a}{q}}}_{\text{future/credit}}
+\nabla_\theta\log
+\color{#19845d}{\pi_\theta}(y_t\mid h_t)
+\Bigg].
+\end{aligned}
 \]
+
+<div class="policy-legend" aria-label="Policy color legend">
+  <span class="policy-mu">\\(\mu\\) behavior / rollout</span>
+  <span class="policy-q">\\(q\\) frozen proximal anchor</span>
+  <span class="policy-pi">\\(\pi_\theta\\) current trainable policy</span>
+</div>
+
 </div>
 
 If \\(A_t^q\\) is unavailable and only a return from a \\(\mu\\)-generated suffix
@@ -241,7 +263,10 @@ B_{t+1:T}R
 g_q^{\mathrm{reward}}(\pi)
 =
 \sum_t\mathbb E_\mu
-\left[B_{1:T}U_tR\,s_t\right].
+\left[
+B_{1:T}U_tR\,
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)
+\right].
 \]
 </div>
 
@@ -253,6 +278,17 @@ This yields three conceptually separate design problems:
    returns, a critic, corrected suffixes, or another estimator.
 3. **Proximal optimization:** shape \\(U\\) while \\(\pi\\) remains near \\(q\\).
 
+The research coverage of these three surfaces is uneven. Among the LLM
+policy-loss methods mapped in this article, explicit machinery is concentrated
+on \\(B\\) and \\(U\\). Comparatively few methods construct a dedicated
+\\(A^{q\leftarrow\mu}\\) estimator; most reuse behavior-generated rollout
+credit and assume \\(\hat A^{\mathrm{roll}}\approx A^q\\). Critics, suffix
+correction, trace estimators, and re-rolled continuations are possible
+credit-realignment tools, but they are not yet a comparably mature design axis
+in this scoped literature. This is a statement about the methods surveyed here,
+not a claim that off-policy advantage estimation is absent from reinforcement
+learning.
+
 Decoupled PPO makes the first and third problems explicit
 ([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)). Most LLM variants
 then simplify \\(B_{1:t}\\) to a token or sequence statistic, clip or mask its
@@ -261,26 +297,9 @@ signal as if it were \\(A^q\\). The factorization is exact algebra; the resultin
 loss need not be an exact estimator of either the \\(q\\)-surrogate or
 \\(\nabla J(\pi)\\).
 
-It is useful to keep the approximation layers separate. If \\(g^\star\) is the
-exact current-policy gradient, \\(g_q\\) the unclipped TRPO surrogate gradient,
-\\(g_{\mathrm{PPO}}\\) its clipped version, and \\(\hat g_{\mathrm{method}}\\) a
-finite-sample rollout-mitigation estimator, then conceptually
-
-<div class="equation">
-\[
-\mathbb E[\hat g_{\mathrm{method}}]-g^\star
-=
-\underbrace{(g_q-g^\star)}_{\text{local-surrogate error}}
-+
-\underbrace{(g_{\mathrm{PPO}}-g_q)}_{\text{optimizer shaping}}
-+
-\underbrace{(\mathbb E[\hat g_{\mathrm{method}}]-g_{\mathrm{PPO}})}
-_{\text{data, credit, and tail approximation}}.
-\]
-</div>
-
-The operators studied below mostly reorganize the last two terms; they do not
-erase the first merely by correcting a rollout ratio.
+The remainder therefore stays focused on how practical methods approximate or
+robustify this Decoupled-PPO \\(q\\)-surrogate; correcting a rollout ratio does
+not by itself remove the surrogate's local-model error or realign its credit.
 
 ### 1.5 The solution space studied here
 
@@ -333,7 +352,8 @@ g_q(\pi)
 \sum_t
 \mathbb E_\mu
 \left[
-B_{1:t}U_tA_t^q s_t
+B_{1:t}U_tA_t^q
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)
 \right].
 \]
 </div>
@@ -781,6 +801,20 @@ not a synonym for every sequence-level rejection rule. The pure geometric rule
 called Geo-Mask in Li and Liu's Part 3, and Geo-RS in veRL, instead has the form
 \\(\mathbb{I}[C_{\rm low}\le G\le C_{\rm high}]F\\). It performs selection but
 no change of measure.
+
+**Unbiasedness status (August 2026).** Geo-RS is **not** an unbiased estimator
+of the original, unmasked \\(q\\)-surrogate or current-policy gradient. The
+geometric \\(k_3\\)-style statistic used to build \\(G\\) can be an unbiased
+estimator of a per-token KL under its stated sampling distribution, and the
+normalization makes the *acceptance criterion* length-invariant. Neither fact
+makes the masked gradient unbiased. Pure Geo-RS estimates the selected-data
+quantity \\(\mathbb E_\mu[\mathbb I(G\in\mathcal A)F]\\). Even when the same gate
+is composed with valid sequence IS, it gives
+\\(\mathbb E_\mu[\mathbb I(G\in\mathcal A)RF]
+=\mathbb E_q[\mathbb I(G\in\mathcal A)F]\\), which is unbiased only for the
+*gated* target; relative to \\(\mathbb E_q[F]\\), the rejected region is an
+omitted-tail bias. Thus Geo-RS is best described as **length-neutral
+selection**, not unbiased off-policy correction.
 
 At token scale, replace \\(R,F\\) by \\(r_t,\phi_t\\). The resulting matrix makes
 the combinations explicit:
