@@ -846,40 +846,48 @@ proximal forward pass is expensive, or the system does not retain a distinct
 
 ### 3.3 A practical decision flow
 
-The theory supplies a sequence, not a universal winner: the
-performance-difference identity fixes the local \\(q\\)-surrogate; change of
-measure fixes the admissible ratio horizon; robust estimation motivates tail
-control; proximal optimization shapes \\(U\\); and off-policy value estimation
-determines whether \\(\hat A\\) is credible.
+The useful output of a decision flow is a correction configuration, not merely
+a diagnosis. The following questions progressively determine the topology,
+ratio horizon, tail operator, and update shaper:
+
+<div class="table-wrap" markdown="1">
+
+| Decision question | Theoretical basis | Correction consequence |
+|---|---|---|
+| Is \\(\pi\\) still close to \\(q\\)? | Performance-difference identity; local TRPO surrogate | If not, refresh \\(q\\) or reduce the update. No operator on \\(B\\) repairs a failed local surrogate. |
+| Does \\(\mu\\) have sufficient support and effective overlap with \\(q\\)? | Radon–Nikodym change of measure | Without support, collect new rollouts. With very poor overlap, raw IS may exist formally but be unusable at finite sample size. |
+| Does mismatch come from rollout data or the current update? | \\(E=BU\\) factorization | Treat inherited mismatch on \\(B\\), update drift on \\(U\\), and use \\(E\\) directly mainly when \\(q=\mu\\) or endpoint collapse is deliberate. |
+| Is a credible \\(A^q\\) available? | Policy-gradient theorem; conditional expectation | With \\(A^q\\), Prefix-IS can target the causal \\(q\\)-surrogate term. With only a terminal return, use Seq-IS or future/suffix correction before a prefix estimator. |
+| Must state/prefix occupancy be corrected? | Per-decision IS | Use \\(B_{1:t}\\) for fidelity to the \\(q\\)-surrogate. Using only \\(B_t\\) is a lower-variance token approximation with occupancy bias. |
+| Is the tail valid but rare, or is the rollout untrusted? | IS variance theory; robust statistics | Keep raw IS when ESS is adequate, use TIS for valid high-leverage observations, and use mask/RS for data that should not be trusted. |
+| Can the selected-data objective replace the original target? | Missing-data and selection bias | Pure RS is coherent only when that target change is accepted. MIS retains IS weights inside the accepted region but still omits the rejected target tail; exact preservation requires avoiding deterministic rejection or obtaining new data. |
+
+</div>
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/estimator-decision-flow.svg' | relative_url }}" alt="Decision flow for configuring the unified estimator. First choose coupled or factorized topology. Before tuning operators, verify local-surrogate validity, behavior-policy coverage, and credit alignment. Then choose ratio horizon and classify the behavior-ratio tail as usable, high-leverage but valid, or untrusted. Finally attach a proximal shaper to U and monitor estimator diagnostics.">
+  <img src="{{ '/assets/estimator-decision-flow.svg' | relative_url }}" alt="Executable correction-selection tree. It first checks whether pi is close to q and whether mu covers q, then places mismatch on B, U, or the coupled E edge. For rollout mismatch it chooses prefix, sequence, or token correction from the available credit and occupancy requirement, then chooses raw IS, TIS, MIS, or RS from tail validity and whether selection bias is acceptable. The selected behavior correction is finally composed with PPO or GSPO shaping on U.">
   <figcaption>
-    Figure 3. A conditional decision flow for the unified estimator. Invalid
-    support, a stale proximal anchor, or badly misaligned credit calls for new
-    data or a new reference—not a more elaborate tail operator. Thresholds
-    remain empirical within the surviving branch.
+    Figure 3. An executable correction-selection tree. Each leaf names a
+    correction, and the final row composes that behavior-side choice with the
+    update shaper. A stale anchor or missing support exits the tree because
+    neither can be repaired by choosing a different IS tail operator.
   </figcaption>
 </figure>
 
-Read the flow in four passes:
+The main leaves correspond to recognizable recipes:
 
-1. **Choose the topology.** If \\(q=\mu\\), start with coupled PPO/GRPO on
-   \\(E=U\\); add \\(M(S(E))\\) only when an explicit anomaly filter is wanted.
-   Otherwise keep data correction on \\(B\\) and update shaping on \\(U\\).
-2. **Fail fast on invalid inputs.** If \\(\pi\\) is no longer near \\(q\\),
-   refresh the anchor or reduce optimization. If \\(\mu\\) does not cover
-   \\(q\\), collect new rollouts. If credit mismatch dominates, improve
-   \\(\hat A^{q\leftarrow\mu}\\). None of these failures is repaired by TIS or
-   RS.
-3. **Configure the behavior side.** Choose the shortest justified horizon:
-   prefix with \\(A^q\\), sequence for an arbitrary response-level integrand,
-   or token as a practical occupancy approximation. Keep raw IS when ESS is
-   adequate, use TIS for valid high-leverage tails, and use a mask/RS when the
-   rollout itself is not trusted.
-4. **Attach the update and monitor.** Apply PPO/GSPO to \\(U=\pi/q\\), then
-   report ESS, acceptance rate, clip fraction, \\(\log B\\), \\(\log U\\), and
-   gate–advantage correlation by response length and policy age.
+| Conditions | Selected configuration |
+|---|---|
+| \\(q=\mu\\), no separate rollout mismatch | \\(\widetilde\Psi_{\mathrm{PPO/GSPO}}(E,\hat A^{\mathrm{roll}})\\) |
+| Distinct \\(q\\), credible \\(A^q\\), occupancy fidelity required | \\(\widetilde W_{\mathrm{prefix}}(B)\widetilde\Psi(U,A^q)\\) |
+| Only a terminal response integrand is available | \\(\widetilde W_{\mathrm{seq}}(B)\widetilde\Psi(U,\mathcal R)\\), or future correction followed by Prefix-IS |
+| Occupancy approximation is acceptable | \\(\widetilde W_{\mathrm{tok}}(B)\widetilde\Psi(U,\hat A)\\) |
+| Valid but heavy ratio tail | Replace the selected raw weight by \\(\widetilde W_{\mathrm{TIS}}\\) |
+| Untrusted rollout and target change is acceptable | \\(M(S(B))\widetilde\Psi(U,\hat A)\\) for pure RS, or \\(M(S(B))\widetilde W(B)\widetilde\Psi(U,\hat A)\\) for MIS |
+
+Within the selected leaf, thresholds remain empirical. Report ESS, acceptance
+rate, clip fraction, \\(\log B\\), \\(\log U\\), and gate–advantage correlation
+by response length and policy age.
 
 ### 3.4 Open configurations suggested by the estimator
 

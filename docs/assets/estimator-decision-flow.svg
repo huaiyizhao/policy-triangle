@@ -1,141 +1,178 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1120" role="img" aria-labelledby="flow-title flow-desc">
-  <title id="flow-title">Decision flow for configuring the unified estimator</title>
-  <desc id="flow-desc">An academic flowchart. Fix the q-surrogate and credit target, choose coupled or factorized topology, fail fast when the proximal anchor, behavior support, or credit is invalid, configure behavior-side geometry and tail treatment, then shape the update and monitor estimator diagnostics.</desc>
+  <title id="flow-title">Executable policy-mismatch correction selection</title>
+  <desc id="flow-desc">A correction-selection flowchart. It checks whether pi is close to q and whether behavior mu covers q, places mismatch on B, U, or coupled E, chooses prefix, sequence, or token correction from the available credit and occupancy requirement, chooses raw IS, TIS, MIS, or rejection sampling from tail validity and target semantics, and finally composes the selected behavior correction with proximal shaping on U.</desc>
 
   <defs>
-    <pattern id="flow-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+    <pattern id="decision-grid" width="28" height="28" patternUnits="userSpaceOnUse">
       <circle cx="1.5" cy="1.5" r="1.2" fill="#d8dde2" opacity="0.45"/>
     </pattern>
-    <marker id="flow-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+    <marker id="decision-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="#68747f"/>
     </marker>
-    <marker id="flow-arrow-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0 0 L10 5 L0 10 z" fill="#a53f3f"/>
+    <marker id="decision-arrow-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2878ad"/>
     </marker>
   </defs>
 
   <rect width="1440" height="1120" fill="#f7f8fa"/>
-  <rect width="1440" height="1120" fill="url(#flow-grid)"/>
+  <rect width="1440" height="1120" fill="url(#decision-grid)"/>
   <rect x="34" y="34" width="1372" height="1052" rx="14" fill="#ffffff" stroke="#d8dde2" stroke-width="2"/>
 
   <g font-family="Arial, Helvetica, sans-serif">
-    <text x="72" y="78" fill="#59636e" font-size="13" font-weight="700" letter-spacing="2.3">FROM REFERENCE TARGET TO ESTIMATOR CONFIGURATION</text>
-    <text x="72" y="116" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="31">A practical decision flow</text>
-    <text x="1368" y="113" text-anchor="end" fill="#7b858f" font-size="13">invalid assumptions require new data or a new anchor—not a stronger tail operator</text>
+    <text x="72" y="78" fill="#59636e" font-size="13" font-weight="700" letter-spacing="2.3">EXECUTABLE CORRECTION SELECTION</text>
+    <text x="72" y="116" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="31">Conditions → correction geometry → tail operator → composed estimator</text>
     <line x1="72" y1="140" x2="1368" y2="140" stroke="#d8dde2" stroke-width="2"/>
 
-    <g transform="translate(430 164)">
-      <rect width="580" height="76" rx="10" fill="#f8f5fc" stroke="#6947a4" stroke-width="2.5"/>
-      <circle cx="42" cy="38" r="24" fill="#6947a4"/>
-      <text x="42" y="46" text-anchor="middle" fill="#ffffff" font-size="23" font-weight="700">1</text>
-      <text x="82" y="31" fill="#553587" font-size="13" font-weight="700" letter-spacing="1.4">FIX THE REFERENCE</text>
-      <text x="82" y="56" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="20">local q-surrogate · declared credit target A<tspan baseline-shift="super" font-size="13">q</tspan></text>
+    <!-- Stage 1: validity -->
+    <g transform="translate(72 165)">
+      <rect width="370" height="156" rx="11" fill="#fffaf4" stroke="#c66d0a" stroke-width="2.5"/>
+      <text x="20" y="31" fill="#c66d0a" font-size="12" font-weight="700" letter-spacing="1.4">1A · LOCAL SURROGATE</text>
+      <text x="185" y="67" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="24">Is π still close to q?</text>
+      <rect x="20" y="88" width="330" height="46" rx="7" fill="#fcf5f5" stroke="#a53f3f"/>
+      <text x="35" y="107" fill="#a53f3f" font-size="11" font-weight="700">NO · DO NOT TUNE B</text>
+      <text x="35" y="126" fill="#17202a" font-size="13">refresh q · reduce epochs / step size</text>
+      <text x="350" y="149" text-anchor="end" fill="#7b858f" font-size="10">PDL · TRPO locality</text>
     </g>
 
-    <line x1="720" y1="240" x2="720" y2="270" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-    <path d="M720 273 L858 338 L720 403 L582 338 Z" fill="#f8fafb" stroke="#59636e" stroke-width="2.5"/>
-    <text x="720" y="329" text-anchor="middle" fill="#59636e" font-size="12" font-weight="700" letter-spacing="1.4">TOPOLOGY</text>
-    <text x="720" y="357" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="25">q = μ ?</text>
+    <line x1="442" y1="225" x2="486" y2="225" stroke="#68747f" stroke-width="2.5" marker-end="url(#decision-arrow)"/>
+    <text x="464" y="214" text-anchor="middle" fill="#59636e" font-size="11" font-weight="700">YES</text>
 
-    <path d="M582 338 H325 V385" fill="none" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-    <rect x="440" y="322" width="54" height="25" rx="12.5" fill="#ffffff"/>
-    <text x="467" y="340" text-anchor="middle" fill="#59636e" font-size="12" font-weight="700">YES</text>
-    <path d="M858 338 H1115 V385" fill="none" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-    <rect x="946" y="322" width="50" height="25" rx="12.5" fill="#ffffff"/>
-    <text x="971" y="340" text-anchor="middle" fill="#59636e" font-size="12" font-weight="700">NO</text>
-
-    <g transform="translate(80 385)">
-      <rect width="490" height="150" rx="11" fill="#f4faf7" stroke="#19845d" stroke-width="2.5"/>
-      <rect width="490" height="8" rx="4" fill="#19845d"/>
-      <text x="22" y="39" fill="#19845d" font-size="13" font-weight="700" letter-spacing="1.4">COUPLED / BYPASS</text>
-      <text x="22" y="72" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="25">B = 1,   U = E = π / μ</text>
-      <text x="22" y="101" fill="#35404a" font-size="15">Base: Ψ̃<tspan baseline-shift="sub" font-size="10">PPO/GRPO</tspan>(E, Â<tspan baseline-shift="sub" font-size="10">roll</tspan>)</text>
-      <rect x="22" y="116" width="446" height="25" rx="12.5" fill="#eaf6f1" stroke="#8ec6b1"/>
-      <text x="245" y="133" text-anchor="middle" fill="#126746" font-size="12">Optional M(S(E)) only for an explicit anomaly gate</text>
+    <g transform="translate(486 165)">
+      <rect width="370" height="156" rx="11" fill="#f4f9fc" stroke="#2878ad" stroke-width="2.5"/>
+      <text x="20" y="31" fill="#2878ad" font-size="12" font-weight="700" letter-spacing="1.4">1B · DATA COVERAGE</text>
+      <text x="185" y="67" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="23">Does μ cover q?</text>
+      <rect x="20" y="88" width="330" height="46" rx="7" fill="#fcf5f5" stroke="#a53f3f"/>
+      <text x="35" y="107" fill="#a53f3f" font-size="11" font-weight="700">NO SUPPORT · EXIT</text>
+      <text x="35" y="126" fill="#17202a" font-size="13">collect new rollouts; IS cannot recover</text>
+      <text x="350" y="149" text-anchor="end" fill="#7b858f" font-size="10">Radon–Nikodym</text>
     </g>
 
-    <g transform="translate(870 385)">
-      <rect width="490" height="150" rx="11" fill="#f4f9fc" stroke="#2878ad" stroke-width="2.5"/>
-      <rect width="490" height="8" rx="4" fill="#2878ad"/>
-      <text x="22" y="39" fill="#2878ad" font-size="13" font-weight="700" letter-spacing="1.4">FACTORIZED / DECOUPLED</text>
-      <text x="22" y="72" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="24">B = q / μ,   U = π / q</text>
-      <text x="22" y="101" fill="#35404a" font-size="15">Configure inherited data on B</text>
-      <text x="22" y="127" fill="#35404a" font-size="15">Shape the trainable update on U</text>
+    <line x1="856" y1="225" x2="900" y2="225" stroke="#68747f" stroke-width="2.5" marker-end="url(#decision-arrow)"/>
+    <text x="878" y="214" text-anchor="middle" fill="#59636e" font-size="11" font-weight="700">YES</text>
+
+    <!-- Stage 2: placement -->
+    <g transform="translate(900 165)">
+      <rect width="468" height="156" rx="11" fill="#f8f5fc" stroke="#6947a4" stroke-width="2.5"/>
+      <text x="20" y="31" fill="#6947a4" font-size="12" font-weight="700" letter-spacing="1.4">2 · WHERE DOES MISMATCH LIVE?</text>
+      <rect x="20" y="49" width="132" height="61" rx="8" fill="#eef6fb" stroke="#2878ad"/>
+      <text x="86" y="72" text-anchor="middle" fill="#205f8b" font-size="12" font-weight="700">ROLLOUT / BOTH</text>
+      <text x="86" y="94" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">correct B ↓</text>
+      <rect x="168" y="49" width="132" height="61" rx="8" fill="#eef8f4" stroke="#19845d"/>
+      <text x="234" y="72" text-anchor="middle" fill="#126746" font-size="12" font-weight="700">UPDATE ONLY</text>
+      <text x="234" y="94" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">C(U)</text>
+      <rect x="316" y="49" width="132" height="61" rx="8" fill="#fff7ee" stroke="#c66d0a"/>
+      <text x="382" y="72" text-anchor="middle" fill="#8f4c05" font-size="12" font-weight="700">COUPLED q = μ</text>
+      <text x="382" y="94" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">C(E), E = U</text>
+      <text x="448" y="149" text-anchor="end" fill="#7b858f" font-size="10">E = BU factorization</text>
     </g>
 
-    <line x1="1115" y1="535" x2="1115" y2="575" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
+    <path d="M986 321 V355 H720 V376" fill="none" stroke="#2878ad" stroke-width="2.5" marker-end="url(#decision-arrow-blue)"/>
+    <text x="850" y="346" text-anchor="middle" fill="#205f8b" font-size="11" font-weight="700">B CORRECTION REQUIRED</text>
 
-    <g transform="translate(870 575)">
-      <rect width="490" height="136" rx="11" fill="#fffaf4" stroke="#c66d0a" stroke-width="2.5"/>
-      <text x="22" y="31" fill="#c66d0a" font-size="13" font-weight="700" letter-spacing="1.4">2 · VALIDITY GATE</text>
-      <line x1="22" y1="42" x2="468" y2="42" stroke="#ecd6bc"/>
-      <circle cx="36" cy="66" r="9" fill="#c66d0a"/>
-      <path d="M31 66 L35 70 L42 61" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="55" y="71" fill="#17202a" font-size="14">π remains near the proximal anchor q</text>
-      <circle cx="36" cy="94" r="9" fill="#c66d0a"/>
-      <path d="M31 94 L35 98 L42 89" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="55" y="99" fill="#17202a" font-size="14">behavior μ covers the required q support</text>
-      <circle cx="36" cy="122" r="9" fill="#c66d0a"/>
-      <path d="M31 122 L35 126 L42 117" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="55" y="127" fill="#17202a" font-size="14">credit Â is a credible proxy for A<tspan baseline-shift="super" font-size="10">q</tspan></text>
+    <!-- Stage 3: horizon -->
+    <g transform="translate(72 376)">
+      <rect width="1296" height="211" rx="11" fill="#f8fafb" stroke="#2878ad" stroke-width="2.5"/>
+      <text x="20" y="31" fill="#2878ad" font-size="12" font-weight="700" letter-spacing="1.4">3 · CHOOSE THE RATIO HORIZON FROM CREDIT + OCCUPANCY REQUIREMENT</text>
+      <line x1="20" y1="44" x2="1276" y2="44" stroke="#c7dce9"/>
+
+      <g transform="translate(20 62)">
+        <rect width="397" height="113" rx="9" fill="#ffffff" stroke="#5578a7" stroke-width="2"/>
+        <text x="18" y="28" fill="#5578a7" font-size="11" font-weight="700" letter-spacing="1.2">CREDIBLE A<tspan baseline-shift="super" font-size="8">q</tspan> + OCCUPANCY FIDELITY</text>
+        <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="24">PREFIX-IS · R<tspan baseline-shift="sub" font-size="15">1:t</tspan> = B<tspan baseline-shift="sub" font-size="15">1:t</tspan></text>
+        <text x="18" y="85" fill="#35404a" font-size="13">Exact causal change of measure for U<tspan baseline-shift="sub" font-size="9">t</tspan>A<tspan baseline-shift="super" font-size="9">q</tspan><tspan baseline-shift="baseline" font-size="13">s</tspan><tspan baseline-shift="sub" font-size="9">t</tspan></text>
+        <text x="18" y="104" fill="#7b858f" font-size="11">per-decision IS · minimum exact prefix horizon</text>
+      </g>
+
+      <g transform="translate(449 62)">
+        <rect width="397" height="113" rx="9" fill="#ffffff" stroke="#c66d0a" stroke-width="2"/>
+        <text x="18" y="28" fill="#c66d0a" font-size="11" font-weight="700" letter-spacing="1.2">ONLY TERMINAL / RESPONSE INTEGRAND F</text>
+        <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="24">SEQ-IS · R = B<tspan baseline-shift="sub" font-size="15">1:T</tspan></text>
+        <text x="18" y="85" fill="#35404a" font-size="13">Or future correction → A<tspan baseline-shift="super" font-size="9">q</tspan><tspan baseline-shift="baseline" font-size="13">, then Prefix-IS</tspan></text>
+        <text x="18" y="104" fill="#7b858f" font-size="11">full response change of measure · high variance</text>
+      </g>
+
+      <g transform="translate(878 62)">
+        <rect width="398" height="113" rx="9" fill="#ffffff" stroke="#2878ad" stroke-width="2"/>
+        <text x="18" y="28" fill="#2878ad" font-size="11" font-weight="700" letter-spacing="1.2">OCCUPANCY APPROXIMATION ACCEPTED</text>
+        <text x="18" y="61" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="24">TOKEN-IS · r<tspan baseline-shift="sub" font-size="15">t</tspan> = B<tspan baseline-shift="sub" font-size="15">t</tspan></text>
+        <text x="18" y="85" fill="#35404a" font-size="13">Lower variance; prefix remains distributed as μ</text>
+        <text x="18" y="104" fill="#7b858f" font-size="11">practical approximation · not exact q occupancy</text>
+      </g>
+
+      <text x="1276" y="201" text-anchor="end" fill="#7b858f" font-size="10">policy-gradient theorem · conditional expectation · per-decision IS</text>
     </g>
 
-    <path d="M870 643 H570" fill="none" stroke="#a53f3f" stroke-width="2.5" marker-end="url(#flow-arrow-red)"/>
-    <rect x="690" y="626" width="72" height="25" rx="12.5" fill="#ffffff"/>
-    <text x="726" y="644" text-anchor="middle" fill="#a53f3f" font-size="12" font-weight="700">ANY FAIL</text>
+    <line x1="720" y1="587" x2="720" y2="620" stroke="#68747f" stroke-width="2.5" marker-end="url(#decision-arrow)"/>
 
-    <g transform="translate(80 575)">
-      <rect width="490" height="136" rx="11" fill="#fcf5f5" stroke="#a53f3f" stroke-width="2.5"/>
-      <text x="22" y="31" fill="#a53f3f" font-size="13" font-weight="700" letter-spacing="1.4">STOP TUNING OPERATORS</text>
-      <line x1="22" y1="42" x2="468" y2="42" stroke="#ead0d0"/>
-      <text x="22" y="70" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="19">refresh q · collect new rollouts</text>
-      <text x="22" y="98" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="19">reduce optimization · realign Â → A<tspan baseline-shift="super" font-size="12">q</tspan></text>
-      <text x="22" y="123" fill="#7d3434" font-size="12">TIS, MIS, or RS cannot repair a failed assumption.</text>
+    <!-- Stage 4: tail -->
+    <g transform="translate(72 620)">
+      <rect width="1296" height="247" rx="11" fill="#f8fafb" stroke="#59636e" stroke-width="2.5"/>
+      <text x="20" y="31" fill="#59636e" font-size="12" font-weight="700" letter-spacing="1.4">4 · APPLY A TAIL OPERATOR TO THE SELECTED TOKEN / PREFIX / SEQUENCE RATIO</text>
+      <line x1="20" y1="44" x2="1276" y2="44" stroke="#d8dde2"/>
+
+      <g transform="translate(20 62)">
+        <rect width="350" height="139" rx="9" fill="#f4f9fc" stroke="#2878ad" stroke-width="2"/>
+        <text x="18" y="29" fill="#2878ad" font-size="11" font-weight="700" letter-spacing="1.2">ESS ADEQUATE · TAIL IS USABLE</text>
+        <text x="18" y="63" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="25">RAW IS · W(R) = R</text>
+        <text x="18" y="91" fill="#35404a" font-size="13">Retain the selected change-of-measure ratio.</text>
+        <rect x="18" y="105" width="314" height="23" rx="11.5" fill="#e5f2fa"/>
+        <text x="175" y="121" text-anchor="middle" fill="#205f8b" font-size="11" font-weight="700">PREFIX-IS · SEQ-IS · TOKEN-IS</text>
+      </g>
+
+      <g transform="translate(390 62)">
+        <rect width="350" height="139" rx="9" fill="#fff9f2" stroke="#c66d0a" stroke-width="2"/>
+        <text x="18" y="29" fill="#c66d0a" font-size="11" font-weight="700" letter-spacing="1.2">VALID BUT HIGH-LEVERAGE TAIL</text>
+        <text x="18" y="63" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="25">TIS · W(R) = min(R,C)</text>
+        <text x="18" y="91" fill="#35404a" font-size="13">Keep the observation; cap its statistical weight.</text>
+        <rect x="18" y="105" width="314" height="23" rx="11.5" fill="#fff3e3"/>
+        <text x="175" y="121" text-anchor="middle" fill="#8f4c05" font-size="11" font-weight="700">TOKEN / PREFIX / SEQ-TIS</text>
+      </g>
+
+      <g transform="translate(760 62)">
+        <rect width="516" height="139" rx="9" fill="#fcf5f5" stroke="#a53f3f" stroke-width="2"/>
+        <text x="18" y="29" fill="#a53f3f" font-size="11" font-weight="700" letter-spacing="1.2">ROLLOUT IS UNTRUSTED · CAN THE TARGET CHANGE?</text>
+        <rect x="18" y="44" width="145" height="73" rx="7" fill="#ffffff" stroke="#a53f3f"/>
+        <text x="90.5" y="65" text-anchor="middle" fill="#7d3434" font-size="11" font-weight="700">YES · PURE RS</text>
+        <text x="90.5" y="88" text-anchor="middle" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="17">M(S)F</text>
+        <text x="90.5" y="107" text-anchor="middle" fill="#59636e" font-size="9">selected-data target</text>
+        <rect x="176" y="44" width="145" height="73" rx="7" fill="#ffffff" stroke="#6947a4"/>
+        <text x="248.5" y="65" text-anchor="middle" fill="#6947a4" font-size="11" font-weight="700">MIS · M(R)RF</text>
+        <text x="248.5" y="88" text-anchor="middle" fill="#17202a" font-size="11">raw IS inside region</text>
+        <text x="248.5" y="107" text-anchor="middle" fill="#59636e" font-size="9">rejected-tail bias remains</text>
+        <rect x="334" y="44" width="164" height="73" rx="7" fill="#ffffff" stroke="#59636e"/>
+        <text x="416" y="65" text-anchor="middle" fill="#59636e" font-size="11" font-weight="700">NEED FULL TARGET</text>
+        <text x="416" y="88" text-anchor="middle" fill="#17202a" font-size="11">avoid deterministic mask</text>
+        <text x="416" y="107" text-anchor="middle" fill="#59636e" font-size="9">soft cap or new rollouts</text>
+      </g>
+
+      <text x="1276" y="235" text-anchor="end" fill="#7b858f" font-size="10">IS variance · robust statistics · missing-data / selection bias</text>
     </g>
 
-    <line x1="1115" y1="711" x2="1115" y2="748" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-    <rect x="1129" y="719" width="54" height="24" rx="12" fill="#ffffff"/>
-    <text x="1156" y="736" text-anchor="middle" fill="#59636e" font-size="12" font-weight="700">PASS</text>
+    <line x1="720" y1="867" x2="720" y2="900" stroke="#68747f" stroke-width="2.5" marker-end="url(#decision-arrow)"/>
 
-    <g transform="translate(650 748)">
-      <rect width="710" height="196" rx="11" fill="#f8fafb" stroke="#2878ad" stroke-width="2.5"/>
-      <text x="22" y="32" fill="#2878ad" font-size="13" font-weight="700" letter-spacing="1.4">3 · CONFIGURE THE BEHAVIOR SIDE B</text>
-      <line x1="22" y1="44" x2="688" y2="44" stroke="#c7dce9"/>
-      <text x="22" y="69" fill="#59636e" font-size="11" font-weight="700" letter-spacing="1.2">SHORTEST JUSTIFIED HORIZON</text>
-      <rect x="22" y="82" width="208" height="38" rx="7" fill="#ffffff" stroke="#5578a7"/>
-      <text x="126" y="99" text-anchor="middle" fill="#17202a" font-size="13" font-weight="700">PREFIX · with A<tspan baseline-shift="super" font-size="9">q</tspan></text>
-      <text x="126" y="114" text-anchor="middle" fill="#59636e" font-size="10">causal reference contribution</text>
-      <rect x="250" y="82" width="208" height="38" rx="7" fill="#ffffff" stroke="#c66d0a"/>
-      <text x="354" y="99" text-anchor="middle" fill="#17202a" font-size="13" font-weight="700">SEQUENCE · response F</text>
-      <text x="354" y="114" text-anchor="middle" fill="#59636e" font-size="10">general full-response correction</text>
-      <rect x="478" y="82" width="208" height="38" rx="7" fill="#ffffff" stroke="#2878ad"/>
-      <text x="582" y="99" text-anchor="middle" fill="#17202a" font-size="13" font-weight="700">TOKEN · approximation</text>
-      <text x="582" y="114" text-anchor="middle" fill="#59636e" font-size="10">lower variance; occupancy bias</text>
-      <text x="22" y="146" fill="#59636e" font-size="11" font-weight="700" letter-spacing="1.2">CLASSIFY THE TAIL</text>
-      <rect x="22" y="158" width="208" height="27" rx="13.5" fill="#eef6fb" stroke="#2878ad"/>
-      <text x="126" y="176" text-anchor="middle" fill="#205f8b" font-size="11" font-weight="700">ESS OK → RAW IS</text>
-      <rect x="250" y="158" width="208" height="27" rx="13.5" fill="#fff3e3" stroke="#c66d0a"/>
-      <text x="354" y="176" text-anchor="middle" fill="#8f4c05" font-size="11" font-weight="700">VALID HEAVY TAIL → TIS</text>
-      <rect x="478" y="158" width="208" height="27" rx="13.5" fill="#fcf5f5" stroke="#a53f3f"/>
-      <text x="582" y="176" text-anchor="middle" fill="#7d3434" font-size="11" font-weight="700">UNTRUSTED → MASK / RS</text>
+    <!-- Stage 5: composition -->
+    <g transform="translate(215 900)">
+      <rect width="1010" height="119" rx="11" fill="#17202a"/>
+      <text x="24" y="30" fill="#aeb9c3" font-size="12" font-weight="700" letter-spacing="1.4">5 · COMPOSE THE SELECTED CORRECTION WITH THE TRAINABLE UPDATE</text>
+      <text x="505" y="76" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="27">
+        ĝ = E<tspan baseline-shift="sub" font-size="16" fill="#80b9de">μ</tspan>
+        <tspan baseline-shift="baseline" fill="#ffffff"> [ </tspan>
+        <tspan fill="#80b9de">M(S<tspan baseline-shift="sub" font-size="16">B</tspan>)</tspan>
+        <tspan baseline-shift="baseline" fill="#ffffff"> · </tspan>
+        <tspan fill="#e5a960">W̃<tspan baseline-shift="sub" font-size="16">h,tail</tspan>(B)</tspan>
+        <tspan baseline-shift="baseline" fill="#ffffff"> · </tspan>
+        <tspan fill="#bda7df">Ψ̃<tspan baseline-shift="sub" font-size="16">PPO/GSPO</tspan>(U, Â)</tspan>
+        <tspan baseline-shift="baseline" fill="#ffffff"> · </tspan>
+        <tspan fill="#79c5aa">s<tspan baseline-shift="sub" font-size="16">t</tspan></tspan>
+        <tspan baseline-shift="baseline" fill="#ffffff"> ]</tspan>
+      </text>
+      <text x="505" y="102" text-anchor="middle" fill="#aeb9c3" font-size="12">h ∈ {token, prefix, sequence} · coupled branch sets B = 1 and U = E</text>
     </g>
 
-    <path d="M570 460 H610 V1011 H430" fill="none" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-    <path d="M1005 944 V968" fill="none" stroke="#68747f" stroke-width="2.5" marker-end="url(#flow-arrow)"/>
-
-    <g transform="translate(430 968)">
-      <rect width="580" height="86" rx="11" fill="#f4faf7" stroke="#19845d" stroke-width="2.5"/>
-      <circle cx="43" cy="43" r="24" fill="#19845d"/>
-      <text x="43" y="51" text-anchor="middle" fill="#ffffff" font-size="23" font-weight="700">4</text>
-      <text x="84" y="34" fill="#19845d" font-size="13" font-weight="700" letter-spacing="1.4">SHAPE THE TRAINABLE MOVE</text>
-      <text x="84" y="62" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="20">Ψ̃<tspan baseline-shift="sub" font-size="12">PPO/GSPO</tspan>(U, Â) · use E when q = μ</text>
-    </g>
-
-    <g transform="translate(1040 968)">
-      <rect width="320" height="86" rx="11" fill="#17202a"/>
-      <text x="18" y="27" fill="#aeb9c3" font-size="11" font-weight="700" letter-spacing="1.3">MONITOR</text>
-      <text x="18" y="50" fill="#ffffff" font-size="13">ESS · accept · clip · log B / log U</text>
-      <text x="18" y="70" fill="#79c5aa" font-size="12">length · policy age · gate ↔ advantage</text>
+    <g transform="translate(215 1034)">
+      <rect width="1010" height="30" rx="6" fill="#f8fafb" stroke="#aeb6bf"/>
+      <text x="18" y="20" fill="#59636e" font-size="11">MONITOR · ESS · acceptance · clip fraction · log B / log U · response length · policy age · gate ↔ advantage</text>
+      <text x="992" y="20" text-anchor="end" fill="#7b858f" font-size="10">thresholds remain empirical within the chosen leaf</text>
     </g>
   </g>
 </svg>
