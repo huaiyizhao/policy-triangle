@@ -9,7 +9,7 @@ date: 2026-08-05
 ---
 
 <figure class="hero-figure">
-  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic overview of asynchronous LLM reinforcement learning: behavior policy mu generates data, proximal policy q supplies behavior correction and an update anchor, and current policy pi receives the gradient. Methods are located by edge, operator, and geometry.">
+  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic overview of asynchronous LLM reinforcement learning: behavior policy mu supplies rollout data and credit, proximal policy q anchors the target advantage, and current policy pi receives the update. Methods are located by edge, operator, geometry, and credit anchor.">
 </figure>
 
 <div class="abstract" markdown="1">
@@ -25,123 +25,333 @@ unrelated algorithms. This article places them in one solution space using the
 policy triangle. A method is located by three coordinates: the **edge** on which
 mismatch is measured, the **operator** that selects, reweights, or shapes an
 update, and the **geometry**—token, sequence, group, or distribution—on which
-that operator acts. Mapping existing methods into these coordinates separates
-shared design choices from method-specific details and exposes open regions of
-the mitigation space. The framework is a unified view, not a new optimizer or
-convergence claim.
+that operator acts. A fourth label, the **credit anchor**, records whether the
+advantage is generated under the behavior policy, aligned to the proximal
+policy, or simply assumed to be close. Mapping existing methods into these
+coordinates separates shared design choices from method-specific details and
+exposes open regions of the mitigation space. The framework is a unified view
+of approximations to a proximal-policy surrogate, not a new optimizer,
+unbiasedness result, or convergence claim.
 
 </div>
 
 ## 1. Motivation {#motivation}
 
 Policy-gradient training reuses responses after they have been generated.
-Classical methods such as REINFORCE, TRPO, and PPO already distinguish sampling
-from updating ([Williams, 1992](https://doi.org/10.1007/BF00992696);
-[Schulman et al., 2015](https://arxiv.org/abs/1502.05477);
-[Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). In LLM systems,
-however, the separation is unusually large: rollout engines and training
-workers may run different model versions, numerical kernels, precisions, and
-routing decisions.
+Classical methods already separate sampling from updating, but the successive
+steps from exact policy gradient to TRPO, PPO, and Decoupled PPO also change
+what objective is being estimated. Making that evolution explicit gives the
+policy triangle a precise target: most methods studied below are estimators or
+robust approximations of a proximal-policy surrogate, not unbiased estimators
+of the current-policy gradient at an arbitrary \\(\pi\\).
 
-### 1.1 Where mismatch comes from
+### 1.1 Exact off-policy policy gradient and its two obstacles
 
-At system scale, inference and training are usually separate
-([Sheng et al., 2024](https://arxiv.org/abs/2409.19256);
-[Fu et al., 2025](https://arxiv.org/abs/2505.24298)). A rollout may be generated
-by stale weights, a different numerical backend, lower precision, or different
-mixture-of-experts routing. Thus the probability recorded by the rollout engine
-need not equal the probability recomputed by the learner, even when both
-nominally refer to the same checkpoint
+Let \\(\mu\\) be the policy that generated a response, \\(\pi=\pi_\theta\\) the
+current policy, \\(h_t=(x,y_{\lt t})\\), and
+\\(s_t=\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\). Define
+
+<div class="equation">
+\[
+E_i=\frac{\pi(y_i\mid h_i)}{\mu(y_i\mid h_i)},
+\qquad
+E_{a:b}=\prod_{i=a}^{b}E_i.
+\]
+</div>
+
+Under the usual support and common-dynamics assumptions, the exact
+current-policy gradient has the change-of-measure form
+
+<div class="equation">
+\[
+\nabla J(\pi)
+=
+\sum_{t=1}^{T}
+\mathbb E_{y\sim\mu}
+\left[
+E_{1:t}A_t^\pi(h_t,y_t)s_t
+\right].
+\]
+</div>
+
+Equivalently, if only a terminal return is available,
+
+<div class="equation">
+\[
+\nabla J(\pi)
+=
+\sum_{t=1}^{T}
+\mathbb E_{y\sim\mu}
+\left[
+E_{1:T}R(y)s_t
+\right].
+\]
+</div>
+
+These identities expose two different statistical obstacles. The prefix ratio
+\\(E_{1:t}\\) corrects how the context and sampled action were reached, but its
+product can have prohibitive variance. The credit term must meanwhile be
+\\(A_t^\pi\\): the continuation after \\(y_t\\) must be evaluated under \\(\pi\\),
+not under the policy that happened to generate the recorded suffix. Full
+sequence IS performs both corrections at once, but is often statistically
+unusable for long responses. These exact formulas are therefore a benchmark
+for what is being approximated, not a default recipe for LLM training
+([Williams, 1992](https://doi.org/10.1007/BF00992696)).
+
+The gap is unusually visible in LLM systems because rollout and training are
+usually separate ([Sheng et al., 2024](https://arxiv.org/abs/2409.19256);
+[Fu et al., 2025](https://arxiv.org/abs/2505.24298)). Stale weights, different
+attention kernels or precisions, and mixture-of-experts routing can make the
+actual rollout distribution disagree with the learner even when both
+nominally use the same checkpoint
 ([Qiu et al., 2026](https://arxiv.org/abs/2601.18150);
-[Zhong et al., 2026](https://arxiv.org/abs/2605.14220)). Several optimizer
-updates can further move the trainable policy before the sample is consumed
+[Zhong et al., 2026](https://arxiv.org/abs/2605.14220)). Reusing a response
+across optimizer steps adds a second source of drift
 ([Zhang et al., 2026](https://arxiv.org/abs/2602.01826)).
 
-These effects create two conceptually different sources of mismatch. First,
-data may already disagree with the learner when it arrives because the rollout
-policy is stale or numerically different. Second, the trainable policy may move
-further while the same data is reused across optimizer steps. A direct ratio
-conflates the two; a factorized view keeps their causes visible.
+### 1.2 TRPO replaces the exact gradient with a local improvement model
 
-### 1.2 Why Decoupled PPO matters
+Let \\(q\\) be a frozen reference policy. The performance-difference identity is
+exact:
 
-Standard PPO normally lets one old policy play two roles: it is treated both as
-the policy that generated the data and as the proximal anchor used by clipping.
-This coupling is natural when rollouts are fresh and optimization starts
-immediately. It becomes ambiguous when a large or asynchronous batch mixes
-samples from stale workers, replay, or a numerically different inference
-backend.
+<div class="equation">
+\[
+J(\pi)-J(q)
+=
+\sum_{t=1}^{T}
+\mathbb E_{h_t\sim d_t^\pi,\,y_t\sim\pi}
+\left[A_t^q(h_t,y_t)\right].
+\]
+</div>
 
-Let \\(\mu\\) denote the policy that actually generated a token and \\(q\\) the
-frozen learner policy at the start of an update. If \\(\mu\\) is stale while the
-current policy is still close to \\(q\\), an ordinary PPO ratio
-\\(\pi_\theta/\mu\\) can already lie outside its clipping band before the current
-optimizer has moved very far. The clip then reacts to two effects at once:
-rollout staleness and update drift.
+TRPO replaces the current-policy context distribution \\(d_t^\pi\\) by
+\\(d_t^q\\), producing the surrogate
 
-Decoupled PPO separates those roles
-([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)). The ratio
-\\(q/\mu\\) corrects the behavior-to-learner gap, while
-\\(\pi_\theta/q\\) controls the update around a proximal anchor. This was
-originally motivated by batch-size invariance, but the same separation is
-useful for asynchronous LLM training because it creates an explicit interface
-between rollout correction and policy optimization.
+<div class="equation">
+\[
+L_q^{\mathrm{TRPO}}(\pi)
+=
+J(q)+
+\sum_{t=1}^{T}
+\mathbb E_{h_t\sim d_t^q,\,y_t\sim q}
+\left[
+U_tA_t^q(h_t,y_t)
+\right],
+\qquad
+U_t=\frac{\pi(y_t\mid h_t)}{q(y_t\mid h_t)}.
+\]
+</div>
 
-The separation is not a free solution to stale data. The behavior-correction
-weight can be heavy-tailed, token-level correction does not fully repair prefix
-distribution shift, and an old advantage estimate may remain unreliable. The
-age of \\(q\\) also creates a speed–stability trade-off: a recent anchor usually
-clips less and learns faster, whereas an older anchor can act as a stronger
-brake on highly stale data. In synchronous training, \\(\mu=q\\), so coupled and
-decoupled PPO coincide.
+The reference advantage \\(A^q\\) is not an ad hoc substitution: it belongs to
+the exact performance-difference identity. The approximation is the frozen
+occupancy \\(d_t^\pi\approx d_t^q\\). Consequently,
 
-### 1.3 What existing mitigations do
+<div class="equation">
+\[
+L_q^{\mathrm{TRPO}}(q)=J(q),
+\qquad
+\left.\nabla L_q^{\mathrm{TRPO}}(\pi)\right|_{\pi=q}
+=
+\left.\nabla J(\pi)\right|_{\pi=q},
+\]
+</div>
 
-Despite a rapidly expanding vocabulary, most mitigation mechanisms perform one
-of three roles:
+but the two gradients generally differ away from \\(q\\). TRPO controls that
+local-model error with an explicit trust-region constraint rather than trying
+to estimate the high-variance exact gradient everywhere
+([Schulman et al., 2015](https://arxiv.org/abs/1502.05477)).
 
-1. **Select:** reject a token, response, or group judged too far from a
-   reference policy.
-2. **Reweight:** change how strongly sampled data contributes, usually with an
-   importance ratio or a truncated, tapered, or normalized variant.
-3. **Constrain:** shape the trainable update with clipping, a trust region, or a
-   divergence-based gate.
+### 1.3 PPO keeps the local surrogate and replaces the trust-region solver
 
-The same role can act on a token ratio, a sequence statistic, a prompt group,
-or a fuller distributional divergence. Decoupled PPO
-([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)), rollout correction
-([veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)),
-IcePop and KPop ([Ling Team et al., 2025](https://arxiv.org/abs/2510.18855);
-[Guo et al., 2026](https://ringtech.notion.site/kpop)), GSPO
-([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)), DPPO
-([Qi et al., 2026](https://arxiv.org/abs/2602.04879)), TRM
-([Li et al., 2025](https://arxiv.org/abs/2512.23075)), and A-3PO
-([Li et al., 2025](https://arxiv.org/abs/2512.06547)) choose different
-combinations of these recurring decisions.
+PPO retains the same \\(q\\)-anchored local model but replaces TRPO's constrained
+optimization with an advantage-dependent clipped objective:
 
-Named methods often bundle together the source of mismatch, the intervention
-role, and the scale at which it operates. Comparing names alone therefore
-obscures which design choice actually differs.
+<div class="equation">
+\[
+L_q^{\mathrm{PPO}}(\pi)
+=
+\mathbb E_q
+\left[
+\sum_{t=1}^{T}
+\min\!\left(
+U_t\hat A_t^q,
+\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)\hat A_t^q
+\right)
+\right].
+\]
+</div>
 
-> **Position of this note.** The contribution is a coordinate system for
-> viewing the full policy-mismatch mitigation solution space. It maps existing
-> methods into shared coordinates and uses the unoccupied regions to organize
-> possible designs. It is deliberately narrower than a full theory of
-> off-policy RL and does not claim a new optimizer, performance result, or
-> convergence theorem.
+At \\(\pi=q\\), clipping is inactive and the gradient matches the on-policy
+gradient at \\(q\\). Away from that point, PPO is neither the exact
+current-policy gradient nor the unclipped TRPO surrogate. The clip is better
+understood as a heuristic differentiable shaper that discourages selected
+directions of departure from \\(q\\); it does not reproduce TRPO's strict
+constraint or its monotonic-improvement argument
+([Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). Both methods
+therefore rely on keeping \\(\pi\\) sufficiently close to the reference at which
+their local model is accurate.
+
+### 1.4 Decoupled PPO exposes three approximation surfaces
+
+Standard PPO normally lets one distribution play two roles: it is treated as
+both the behavior policy and the proximal anchor. In an asynchronous pipeline,
+let \\(\mu\\) denote the distribution that actually generated the token, \\(q\\)
+the frozen proximal policy, and \\(\pi\\) the current trainable policy. Define
+
+<div class="equation">
+\[
+B_t=\frac{q_t}{\mu_t},
+\qquad
+U_t=\frac{\pi_t}{q_t},
+\qquad
+E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
+\]
+</div>
+
+Using \\(\mu\\)-data, the exact gradient of the *unclipped* \\(q\\)-surrogate is
+
+<div class="equation">
+\[
+g_q(\pi)
+=
+\sum_{t=1}^{T}
+\mathbb E_{y\sim\mu}
+\left[
+\underbrace{B_{1:t}}_{\text{past: data and occupancy}}
+\underbrace{U_t}_{\text{current update}}
+\underbrace{A_t^q}_{\text{future: reference credit}}
+s_t
+\right].
+\]
+</div>
+
+If \\(A_t^q\\) is unavailable and only a return from a \\(\mu\\)-generated suffix
+is observed, then
+
+<div class="equation">
+\[
+Q_t^q(h_t,y_t)
+=
+\mathbb E_\mu
+\left[
+B_{t+1:T}R
+\mid h_t,y_t
+\right],
+\qquad
+g_q^{\mathrm{reward}}(\pi)
+=
+\sum_t\mathbb E_\mu
+\left[B_{1:T}U_tR\,s_t\right].
+\]
+</div>
+
+This yields three conceptually separate design problems:
+
+1. **Past or data correction:** approximate \\(B_{1:t}\\) without letting a
+   prefix product dominate the batch.
+2. **Future or credit realignment:** obtain \\(A^q\\) from behavior-generated
+   returns, a critic, corrected suffixes, or another estimator.
+3. **Proximal optimization:** shape \\(U\\) while \\(\pi\\) remains near \\(q\\).
+
+Decoupled PPO makes the first and third problems explicit
+([Hilton et al., 2022](https://arxiv.org/abs/2110.00641)). Most LLM variants
+then simplify \\(B_{1:t}\\) to a token or sequence statistic, clip or mask its
+tail, retain PPO-like shaping on \\(U\\), and reuse a behavior-generated credit
+signal as if it were \\(A^q\\). The factorization is exact algebra; the resulting
+loss need not be an exact estimator of either the \\(q\\)-surrogate or
+\\(\nabla J(\pi)\\).
+
+It is useful to keep the approximation layers separate. If \\(g^\star\) is the
+exact current-policy gradient, \\(g_q\\) the unclipped TRPO surrogate gradient,
+\\(g_{\mathrm{PPO}}\\) its clipped version, and \\(\hat g_{\mathrm{method}}\\) a
+finite-sample rollout-mitigation estimator, then conceptually
+
+<div class="equation">
+\[
+\mathbb E[\hat g_{\mathrm{method}}]-g^\star
+=
+\underbrace{(g_q-g^\star)}_{\text{local-surrogate error}}
++
+\underbrace{(g_{\mathrm{PPO}}-g_q)}_{\text{optimizer shaping}}
++
+\underbrace{(\mathbb E[\hat g_{\mathrm{method}}]-g_{\mathrm{PPO}})}
+_{\text{data, credit, and tail approximation}}.
+\]
+</div>
+
+The operators studied below mostly reorganize the last two terms; they do not
+erase the first merely by correcting a rollout ratio.
+
+### 1.5 The solution space studied here
+
+The rest of this article uses the Decoupled-PPO \\(q\\)-surrogate as its default
+reference estimand and treats existing mitigations as alternative estimators or
+robust approximations around it. A direct full-sequence estimator that instead
+targets the exact current-policy gradient is marked as such rather than being
+silently identified with the surrogate. The methods repeatedly make four
+choices:
+
+1. **Edge:** act on behavior mismatch \\(B\\), update drift \\(U\\), or their
+   collapsed product \\(E=BU\\).
+2. **Operator:** select with a mask, reweight with a detached coefficient, or
+   shape a differentiable update.
+3. **Geometry:** use a token, prefix, sequence, group, sampled ratio, or fuller
+   distributional statistic.
+4. **Credit anchor:** use rollout-generated credit, explicitly estimate
+   \\(A^q\\), or assume the two are close.
+
+Rollout correction, TIS, MIS, and rejection sampling explore different
+approximations on the behavior or direct edge
+([veRL contributors, 2026](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)).
+IcePop and KPop alter admission and weighting on \\(B\\)
+([Ling Team et al., 2025](https://arxiv.org/abs/2510.18855);
+[Guo et al., 2026](https://ringtech.notion.site/kpop)); GSPO changes the update
+geometry ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)); DPPO and TRM
+use distributional mismatch ([Qi et al., 2026](https://arxiv.org/abs/2602.04879);
+[Li et al., 2025](https://arxiv.org/abs/2512.23075)); and A-3PO approximates the
+proximal anchor ([Li et al., 2025](https://arxiv.org/abs/2512.06547)). They are
+not unrelated losses: they occupy different approximation coordinates around
+the same local-surrogate structure.
+
+> **Position of this note.** The policy triangle is a coordinate system for
+> this surrogate-estimation solution space. It distinguishes exact raw IS,
+> biased variance-control operators, and differentiable optimizer shaping; it
+> does not claim that every mapped method is an unbiased estimator of the
+> current-policy gradient, nor does it introduce a new optimizer or convergence
+> theorem.
 
 ## 2. The policy triangle as a unified solution space {#framework}
 
-The policy triangle is the framework behind the unified view. It separates
-three questions that named algorithms often mix together:
+The policy triangle is the framework behind the unified view. Unless stated
+otherwise, the reference estimand in this section is the gradient of the
+unclipped \\(q\\)-surrogate:
+
+<div class="equation">
+\[
+g_q(\pi)
+=
+\sum_t
+\mathbb E_\mu
+\left[
+B_{1:t}U_tA_t^q s_t
+\right].
+\]
+</div>
+
+A mapped method may estimate this expression exactly, approximate one of its
+factors, or deliberately replace it with a more robust masked or shaped
+objective. The framework separates four questions that named algorithms often
+mix together:
 
 1. **Where is mismatch measured?** Choose an edge.
 2. **What does the mitigation do?** Choose an operator.
 3. **At what scale does it act?** Choose a geometry.
+4. **Which policy supplies credit?** State the advantage anchor.
 
-A mitigation method occupies one or more coordinates in this solution space.
+A mitigation method occupies one or more coordinates plus a credit label.
 Methods that look different may share coordinates; methods with similar names
-may act on different edges or have different gradient semantics.
+may act on different edges, assume different advantages, or have different
+gradient semantics.
 
 ### 2.1 Policy anchors, edges, and operators
 
@@ -169,9 +379,32 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 
 | Edge | Ratio | Causal interpretation |
 |---|---|---|
-| Behavior edge | \\(B=q/\mu\\) | Mismatch already present at learner admission: staleness and train–inference disagreement. |
+| Behavior edge | \\(B=q/\mu\\) | Past/data mismatch already present at learner admission; raw prefix products correct occupancy under \\(\mu\\) to occupancy under \\(q\\). |
 | Update edge | \\(U=\pi/q\\) | Drift created by the current optimization step relative to its proximal anchor. |
-| Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch. |
+| Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch after the two roles have been collapsed. |
+
+The ideal surrogate also requires a compatible credit signal. The edge
+factorization alone does not turn a return generated by a \\(\mu\\)-suffix into
+\\(A_t^q\\):
+
+<div class="equation">
+\[
+\underbrace{B_{1:t}}_{\text{past correction}}
+\quad
+\underbrace{A_t^{q\leftarrow\mu}}_{\text{future credit realignment}}
+\quad
+\underbrace{U_t}_{\text{proximal update}}.
+\]
+</div>
+
+Here \\(A_t^{q\leftarrow\mu}\\) denotes an estimator intended to target
+\\(A_t^q\\) using behavior-generated data. It may use suffix IS
+\\(B_{t+1:T}\\), a \\(q\\)-critic, a trace estimator, re-rolled continuations, or
+no explicit correction at all. In the last case the method uses a rollout
+credit signal \\(\hat A^{\mathrm{roll}}\\) and implicitly assumes
+\\(\hat A^{\mathrm{roll}}\approx A^q\\). For GRPO-style group normalization,
+\\(\hat A^{\mathrm{roll}}\\) is safer terminology than literally calling the
+response-level signal a token-level \\(A^\mu\\).
 
 The three operator classes differ by gradient semantics rather than by the
 names used in a particular implementation.
@@ -204,17 +437,19 @@ The canonical factorized composition is therefore
 <div class="equation">
 \[
 \boxed{
-\mathrm M(B)\,\mathrm W(B)\,\mathrm C(U)
+\mathrm M(B)\,\mathrm W(B)\,
+\mathrm C\!\left(U;\hat A^{q\leftarrow\mu}\right)
 }
 \qquad
-\text{admit/correct on }B\text{, shape the update on }U.
+\text{correct past data on }B,\text{ supply }q\text{-credit, shape }U.
 \]
 </div>
 
 Here either detached operator may be the identity when no filtering or
-reweighting is required. A shaper may also be conditioned on behavior
-mismatch, \\(\mathrm C(U;B)\\), while still acting through the trainable edge
-\\(U\\).
+reweighting is required. The credit label is not a fourth multiplicative ratio:
+it records which continuation distribution the integrand targets. A shaper may
+also be conditioned on behavior mismatch, \\(\mathrm C(U;B,\hat A)\\), while
+still acting through the trainable edge \\(U\\).
 
 On the direct edge, the clean single-ratio families are
 
@@ -262,26 +497,68 @@ giving \\(\mathrm C_{\mathrm{geo}}(E)\\) in a coupled topology or
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle. The behavior edge B is canonically associated with mask and weight, the update edge U with a differentiable shaper, and the direct edge E with mask, weight, or shaper. Representative cards map IS, rejection sampling, IcePop, and KPop by edge, operator, and geometry.">
+  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle. The behavior edge B carries past data correction, the proximal vertex requires credit anchored at A q, the update edge U shapes the current update, and bypass is the special case q equals mu so B equals one and U equals E. Representative cards map IS, rejection sampling, IcePop, and KPop.">
   <figcaption>
-    Figure 1. The mitigation solution space. The triangle identifies where
-    mismatch is measured and shows each edge's canonical operator attachments;
-    geometry identifies the scale of the intervention. Representative cards
-    map methods from Section 2.5. The edge labels are defaults, not prohibitions:
-    detached dynamic masks or weights may also read \\(U\\).
+    Figure 1. Approximating the \\(q\\)-surrogate. The behavior edge carries
+    past/data correction, the proximal vertex anchors the required credit
+    \\(A^q\\), and the update edge carries differentiable control. Coupled
+    bypass sets \\(q=\mu\\), so \\(B=1\\), \\(A^q=A^\mu\\), and \\(U=E\\);
+    nonlinear direct operators on \\(E=BU\\) otherwise represent a collapsed,
+    generally non-equivalent treatment. Representative cards map methods from
+    Section 2.5.
   </figcaption>
 </figure>
 
 ### 2.2 Direct and factorized topologies
 
-**Bypass.** Set \\(q\equiv\mu\\). Then \\(B=1\\) and \\(U=E\\). Statistical correction
-and proximal control are compressed onto one direct edge. This avoids a
-proximal forward pass but loses causal attribution.
+**Coupled bypass.** Set \\(q\equiv\mu\\). The behavior policy becomes the
+proximal anchor, so
+
+<div class="equation">
+\[
+B=1,\qquad U=E=\frac{\pi}{\mu},\qquad A^q=A^\mu.
+\]
+</div>
+
+The \\(q\\)-surrogate degenerates to the usual behavior-anchored surrogate,
+
+<div class="equation">
+\[
+g_\mu(\pi)
+=
+\sum_t
+\mathbb E_\mu
+\left[E_tA_t^\mu s_t\right].
+\]
+</div>
+
+This is the natural synchronous PPO case: no separate \\(\mu\to q\\) data or
+credit realignment is needed. Statistical correction and proximal control are
+compressed onto \\(E=U\\), avoiding a separate proximal policy at the cost of
+losing causal attribution between the two roles.
+
+**Collapsed direct treatment.** A method may instead retain a conceptual
+\\(q\\) but apply a nonlinear operator directly to \\(E=BU\\). This can be
+compared with the factorized surrogate, but it is not generally an equivalent
+implementation because
+
+<div class="equation">
+\[
+\mathcal O(E)=\mathcal O(BU)
+\ne
+\mathcal O_B(B)\mathcal O_U(U)
+\]
+</div>
+
+for clipping, masking, and most divergence gates. Direct methods therefore
+either instantiate the coupled special case \\(q=\mu\\) or deliberately
+collapse behavior mismatch and update drift into a different robust objective.
 
 **Decoupled.** Keep a distinct frozen \\(q\\). The learner can correct rollout
-mismatch on \\(B\\) while constraining the current update on \\(U\\), typically as
-\\(\mathrm M(B)\mathrm W(B)\mathrm C(U)\\), with an identity mask when no
-admission filter is required.
+mismatch on \\(B\\), construct or assume a \\(q\\)-anchored credit signal, and
+constrain the current update on \\(U\\). A typical implementation has the form
+\\(\mathrm M(B)\mathrm W(B)\mathrm C(U;\hat A^{\mathrm{roll}})\\), with an
+identity mask when no admission filter is required.
 
 For PPO clipping, the two constructions can be written side by side. A coupled
 objective attaches the shaper to the direct edge:
@@ -293,47 +570,54 @@ L_{\mathrm{coupled}}
 \mathbb E_{\mu}
 \left[
 \min\!\left(
-E_t\hat A_t,\,
-\operatorname{clip}(E_t,1-\epsilon,1+\epsilon)\hat A_t
+E_t\hat A_t^\mu,\,
+\operatorname{clip}(E_t,1-\epsilon,1+\epsilon)\hat A_t^\mu
 \right)
 \right].
 \]
 </div>
 
-Decoupled PPO attaches a detached behavior weight to \\(B\\) and the
-differentiable PPO shaper to \\(U\\):
+Practical Decoupled PPO attaches a detached behavior weight to \\(B\\) and the
+differentiable PPO shaper to \\(U\\), while commonly reusing rollout-generated
+credit:
 
 <div class="equation">
 \[
-L_{\mathrm{decoupled}}
+L_{\mathrm{decoupled}}^{\mathrm{tok}}
 =
 \mathbb E_{\mu}
 \left[
 \operatorname{sg}[B_t]\,
 \min\!\left(
-U_t\hat A_t,\,
-\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)\hat A_t
+U_t\hat A_t^{\mathrm{roll}},\,
+\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)
+\hat A_t^{\mathrm{roll}}
 \right)
 \right].
 \]
 </div>
 
-On the unclipped branch, the effective score-function coefficient is the same:
+On the unclipped branch, and only when the same credit signal is used, the
+token-wise effective score-function coefficient is the same:
 
 <div class="equation">
 \[
-\operatorname{sg}[B_t]\,U_t\hat A_t
+\operatorname{sg}[B_t]\,U_t\hat A_t^{\mathrm{roll}}
 \nabla_\theta\log\pi_\theta
 =
-E_t\hat A_t\nabla_\theta\log\pi_\theta.
+E_t\hat A_t^{\mathrm{roll}}\nabla_\theta\log\pi_\theta.
 \]
 </div>
 
-Decoupling therefore does not introduce a different policy gradient in the
-linear limit. It changes where the nonlinear trust-region mechanism is
-attached: coupled PPO clips total mismatch \\(E\\), whereas Decoupled PPO
-corrects \\(B\\) and clips only update drift \\(U\\). The choice of \\(q\\) is
-therefore a speed–stability design variable, not merely an accounting device.
+This token-wise algebra does **not** establish exactness with respect to
+\\(g_q\\): the ideal surrogate uses \\(B_{1:t}A_t^q\\), not merely
+\\(B_t\hat A_t^{\mathrm{roll}}\\). Decoupling changes where the nonlinear
+trust-region mechanism is attached—coupled PPO clips total mismatch \\(E\\),
+whereas Decoupled PPO treats \\(B\\) as behavior correction and clips only
+update drift \\(U\\). It also makes the two remaining approximation questions
+visible: how much of the prefix ratio to retain and how to align rollout credit
+to \\(A^q\\). The choice of \\(q\\) is therefore a speed–stability and
+credit-target design variable, not merely an accounting device.
 
 The proximal anchor is itself a design variable. A-3PO, for example,
 approximates it by interpolating behavior and current log-probabilities to avoid
@@ -342,9 +626,12 @@ an additional model forward pass while retaining the factorization \\(E=BU\\)
 
 ### 2.3 Correction geometry and detached tail treatments
 
-This section expands the rollout-side \\(\mathrm M/\mathrm W\\) choices. The
-optimizer-side shaper \\(\mathrm C\\) is orthogonal and may be composed with
-any accepted and weighted contribution.
+This section expands approximations to the past/data factor \\(B_{1:t}\\). The
+optimizer-side shaper \\(\mathrm C(U)\\) is held conceptually separate, and the
+credit signal is assumed to target \\(A^q\\) unless explicitly marked as
+rollout-generated. When the integrand is a raw response return, a sequence
+ratio also performs future/credit realignment; this is why ratio horizon cannot
+be interpreted without stating the credit anchor.
 
 Token/sequence and IS/TIS/MIS/RS answer different questions. The first pair
 chooses **which probability object is measured**; the second chooses **what is
@@ -356,11 +643,12 @@ terminology in the analyses of
 Let the behavior-edge token ratio be
 \\(r_t\equiv B_t=q(y_t\mid h_t)/\mu(y_t\mid h_t)\\). In a bypass topology, the
 same discussion applies with \\(r_t=E_t\\). Let
-\\(\phi_t=\hat A_t\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\) denote a local
-gradient contribution and \\(F(y)\\) a generic response-level integrand, such
-as a reward, loss, or full-response gradient contribution. The symbol \\(F\\)
-is a placeholder for what is being estimated, not another policy or
-correction.
+\\(\phi_t=\hat A_t^{q\leftarrow\mu}
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\) denote a local gradient contribution
+whose credit has already been aligned to \\(q\\), and \\(F(y)\\) a generic
+response-level integrand, such as a raw reward, loss, or full-response gradient
+contribution. The symbol \\(F\\) is a placeholder for what is being estimated,
+not another policy or correction.
 
 #### First choice: token, prefix, sequence, or geometric statistic
 
@@ -422,6 +710,25 @@ complete response. Then \\(\phi_t\\) depends on the suffix and is not
 prefix-measurable: Prefix-IS is not generally exact unless the future return
 has already been replaced by the correct target-policy conditional value or
 corrected per-decision.
+
+For the \\(q\\)-surrogate, this gives a concrete compatibility rule:
+
+<div class="equation">
+\[
+\boxed{
+B_{1:t}A_t^q
+\quad\text{or}\quad
+B_{1:t}\!\left(B_{t+1:T}R\right)
+=B_{1:T}R
+}
+\]
+</div>
+
+The first form uses an explicitly aligned advantage and needs only past
+correction. The second uses a behavior-generated suffix and lets the future
+ratio perform credit realignment. Replacing either expression by
+\\(B_t\hat A_t^{\mathrm{roll}}\\) is a lower-variance practical approximation,
+not an exact identity.
 
 Its statistical problem is not merely that \\(R\\) can be numerically large.
 Because \\(\log R=\sum_t\log r_t\\), dispersion accumulates across the
@@ -546,14 +853,19 @@ explicit composition:
 \widehat g=
 \frac{1}{Z}\sum_i
 \mathrm M_i\,\overline{\mathrm W}_i\,\mathrm C_i\,
-\hat A_i\nabla_\theta\log\pi_\theta(y_i\mid h_i).
+\hat A_i^{\,\alpha}
+\nabla_\theta\log\pi_\theta(y_i\mid h_i),
+\qquad
+\alpha\in\{\mathrm{roll},\mu,q,\pi\}.
 \tag{3}
 \]
 </div>
 
 A concrete attachment is specified by
 \\((\text{edge},\text{operator},\text{scope},\text{statistic},
-\text{sign rule},\text{normalization})\\).
+\text{sign rule},\text{normalization},\text{credit anchor})\\). Exactness is a
+property of this full tuple relative to a stated estimand; it is not a property
+of a ratio or operator name in isolation.
 
 ### 2.4 Combining mitigation mechanisms
 
@@ -584,6 +896,33 @@ k_3(BU)=k_3(B)+k_3(U)+(B-1)(U-1).
 Therefore, filtering total mismatch is not equivalent to filtering the behavior
 and update edges independently. A mask may nevertheless read any edge without
 forcing a downstream importance weight to consume the same edge.
+
+#### Credit correction does not always commute with the operators
+
+The credit anchor is a separate design coordinate, but it is not a black-box
+module that can always be inserted before or after the other operators. PPO
+clipping selects a branch using the sign of \\(\hat A\\); suffix truncation
+changes the conditional return being estimated; and a trajectory-dependent
+mask can destroy the usual baseline cancellation:
+
+<div class="equation">
+\[
+\mathbb E_\mu
+\left[
+M(y)\,B_{1:t}U_t\,b(h_t)\,s_t
+\right]
+\ne 0
+\qquad\text{in general}.
+\]
+</div>
+
+The same issue is stronger for GRPO-style group centering and standardization,
+because rejecting one response can change the credit assigned to the others.
+Thus a method may classify credit realignment separately, but its masked,
+clipped, or group-normalized objective must still be derived jointly. TRM, for
+example, notes that its reward-form and advantage-form masked objectives
+coincide only when the mask is identically one
+([Li et al., 2025](https://arxiv.org/html/2512.23075v5#A7)).
 
 #### Normalization after truncation
 
@@ -618,24 +957,26 @@ deliberately move an estimator away from that limit.
 ### 2.5 Mapping existing methods into the solution space {#taxonomy}
 
 The table maps representative methods by topology and by their dominant
-solution-space coordinates. It isolates policy-mismatch mitigation and does not
-enumerate reward shaping, advantage construction, entropy bonuses, dynamic
-sampling, or systems optimizations.
+solution-space coordinates. It does not attempt to enumerate all critic,
+trace, or group-advantage constructions, but records the credit assumption
+because that assumption determines what the displayed ratio can estimate.
+Reward shaping, entropy bonuses, dynamic sampling, and systems optimizations
+remain outside the table.
 
 <div class="table-wrap" markdown="1">
 
-| Method family | Topology | Solution-space coordinate | Mitigation role |
-|---|---|---|---|
-| [PPO](https://arxiv.org/abs/1707.06347) / [GRPO](https://arxiv.org/abs/2402.03300) / [DAPO](https://arxiv.org/abs/2503.14476) | Coupled | \\(\mathrm C_{\mathrm{tok}}(E)\\) | One direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds. |
-| [CISPO](https://arxiv.org/abs/2506.13585) / [TOPR](https://arxiv.org/abs/2503.14286) | Direct PG | \\(\mathrm W_{\mathrm{tok}}(E)\\) | Detached clipped or tapered weight; gradients need not vanish outside a PPO band. |
-| [GSPO](https://arxiv.org/abs/2507.18071) | Coupled | \\(\mathrm C_{\mathrm{geo}}(E)\\) | Sequence-geometric shaping; the original objective does not add a separate pre-filter. |
-| [Decoupled PPO](https://arxiv.org/abs/2110.00641) / [AReaL](https://arxiv.org/abs/2505.24298) / [A-3PO](https://arxiv.org/abs/2512.06547) | Factorized | \\(\mathrm W(B)\mathrm C(U)\\) | Behavior correction is detached from the trainable proximal constraint. |
-| [TIS](https://doi.org/10.1198/106186008X320456) / rollout IS | Either | \\(\mathrm W_{\mathrm{tok/seq}}(B\text{ or }E)\\) | Raw or truncated detached weights trade change-of-measure fidelity for variance control. |
-| MIS | Either | \\(\mathrm M_{\mathrm{tok/seq}}(B\text{ or }E)\mathrm W_{\mathrm{raw}}(B\text{ or }E)\\), optional \\(\mathrm C\\) | A hard mask removes the tail; accepted samples retain their raw IS weight. |
-| RS / Geo-RS | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional separate \\(\mathrm W\\) and \\(\mathrm C\\) | Pure selection is orthogonal to weighting; a geometric gate is length normalized but is not an IS ratio. |
-| [IcePop](https://arxiv.org/abs/2510.18855) | Factorized | \\(\mathrm M^{\mathrm{ratio}}_{\mathrm{tok}}(B)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | A two-sided ratio mask admits a token, the admitted token retains raw behavior correction, and PPO shapes update drift. |
-| [KPop](https://ringtech.notion.site/kpop) | Factorized | \\(\mathrm M^{\mathrm{biKL}}_{\mathrm{tok}}(\mu,q)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | KPop replaces IcePop's fixed ratio band with bidirectional binary-KL geometry sensitive to absolute token probability. |
-| [DPPO](https://arxiv.org/abs/2602.04879) / [TRM](https://arxiv.org/abs/2512.23075) | Direct | Divergence \\(\mathrm M(E)\\) or \\(\mathrm C(E)\\) | Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence. |
+| Method family | Topology | Solution-space coordinate | Credit assumption | Mitigation role |
+|---|---|---|---|---|
+| [PPO](https://arxiv.org/abs/1707.06347) / [GRPO](https://arxiv.org/abs/2402.03300) / [DAPO](https://arxiv.org/abs/2503.14476) | Coupled bypass | \\(\mathrm C_{\mathrm{tok}}(E)\\), with \\(q=\mu\\) | Fresh-rollout credit; ideally \\(A^\mu=A^q\\). | One direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds. |
+| [CISPO](https://arxiv.org/abs/2506.13585) / [TOPR](https://arxiv.org/abs/2503.14286) | Direct | \\(\mathrm W_{\mathrm{tok}}(E)\\) | Rollout credit; no explicit continuation realignment. | Detached clipped or tapered weight; gradients need not vanish outside a PPO band. |
+| [GSPO](https://arxiv.org/abs/2507.18071) | Coupled bypass | \\(\mathrm C_{\mathrm{geo}}(E)\\) | Rollout credit under the coupled anchor. | Sequence-geometric shaping; the original objective does not add a separate pre-filter. |
+| [Decoupled PPO](https://arxiv.org/abs/2110.00641) / [AReaL](https://arxiv.org/abs/2505.24298) / [A-3PO](https://arxiv.org/abs/2512.06547) | Factorized | \\(\mathrm W(B)\mathrm C(U)\\) | Usually \\(\hat A^{\mathrm{roll}}\approx A^q\\); no explicit \\(\mu\to q\\) credit correction. | Behavior correction is detached from the trainable proximal constraint. |
+| [TIS](https://doi.org/10.1198/106186008X320456) / rollout IS | Either | \\(\mathrm W_{\mathrm{tok/prefix/seq}}(B\text{ or }E)\\) | Prefix exactness requires target-policy credit; Seq-IS with raw return can also realign the suffix. | Raw or truncated detached weights trade change-of-measure fidelity for variance control. |
+| MIS | Either | \\(\mathrm M_{\mathrm{tok/seq}}(B\text{ or }E)\mathrm W_{\mathrm{raw}}(B\text{ or }E)\\), optional \\(\mathrm C\\) | External credit; selection can alter baseline semantics. | A hard mask removes the tail; accepted samples retain their raw IS weight. |
+| RS / Geo-RS | Either | \\(\mathrm M_{\mathrm{tok/seq/geo}}(B\text{ or }E)\\), optional separate \\(\mathrm W\\) and \\(\mathrm C\\) | External credit; no automatic realignment. | Pure selection is orthogonal to weighting; a geometric gate is length normalized but is not an IS ratio. |
+| [IcePop](https://arxiv.org/abs/2510.18855) | Factorized | \\(\mathrm M^{\mathrm{ratio}}_{\mathrm{tok}}(B)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | Rollout credit is reused as \\(A^q\\). | A two-sided ratio mask admits a token, the admitted token retains raw behavior correction, and PPO shapes update drift. |
+| [KPop](https://ringtech.notion.site/kpop) | Factorized | \\(\mathrm M^{\mathrm{biKL}}_{\mathrm{tok}}(\mu,q)\mathrm W_{\mathrm{raw,tok}}(B)\mathrm C^{\mathrm{PPO}}_{\mathrm{tok}}(U)\\) | Rollout credit is reused as \\(A^q\\). | KPop replaces IcePop's fixed ratio band with bidirectional binary-KL geometry sensitive to absolute token probability. |
+| [DPPO](https://arxiv.org/abs/2602.04879) / [TRM](https://arxiv.org/abs/2512.23075) | Direct/collapsed | Divergence \\(\mathrm M(E)\\) or \\(\mathrm C(E)\\) | Rollout/reference credit; no separate proximal-credit correction. | Distributional geometry replaces sampled-ratio magnitude; TRM rejects a sequence on worst-token divergence. |
 
 </div>
 
@@ -667,8 +1008,10 @@ mask defined by the loss.
 
 #### What the mapping clarifies
 
-1. **Bypass is not “IS disabled.”** It means \\(B=1\\); the direct loss may still
-   contain \\(E=U\\).
+1. **Coupled bypass is the degenerate anchor \\(q=\mu\\).** Then \\(B=1\\),
+   \\(U=E\\), and fresh-rollout credit targets both \\(A^\mu\\) and \\(A^q\\).
+   A direct operator on \\(E=BU\\) with a distinct latent \\(q\\) is instead a
+   collapsed, generally non-equivalent treatment.
 2. **PPO and GSPO clipping are not pre-filters.** Their branches change gradient
    flow in an advantage-dependent direction; a detached mask rejects
    independently of that direction.
@@ -678,6 +1021,10 @@ mask defined by the loss.
 4. **IcePop and KPop are masked IS, not TIS.** Both reject an out-of-region
    token and retain \\(B\\) for an accepted token; KPop changes the admission
    geometry from a fixed ratio band to bidirectional binary KL.
+5. **A correct ratio does not imply correct credit.** Prefix correction is exact
+   for the \\(q\\)-surrogate only when paired with \\(A^q\\); the mapped
+   factorized methods generally reuse rollout credit instead of explicitly
+   realigning the suffix.
 
 #### Relation to nearby views
 
@@ -698,7 +1045,10 @@ divergence-based shapers in the same coordinates.
 [RPG](https://arxiv.org/abs/2505.17508) and the
 [off-policy interpretation of group-relative REINFORCE](https://arxiv.org/abs/2509.24203)
 give deeper analyses of KL regularization, baselines, and data shaping. Those
-axes are intentionally outside this critic-free mitigation view.
+works analyze parts of the credit problem more deeply than the anchor label
+used here. The triangle records whether credit targets \\(\mu\\), \\(q\\), or
+\\(\pi\\), but does not attempt to subsume the full theory of critic learning,
+trace estimators, or group-normalized advantages.
 [Jackpot](https://arxiv.org/abs/2602.06107) also lies partly outside the view
 because it changes the behavior distribution through rejection and joint
 rollout-model updates, rather than only operating on stored trajectories
@@ -716,6 +1066,7 @@ alternatives remain available.
 | Observed issue | Relevant coordinate | Design implication |
 |---|---|---|
 | Stale rollouts or train–inference disagreement | Behavior edge \\(B\\) | Use a detached mask or weight to select or correct data that has already been generated. |
+| Rollout continuation differs from the proximal policy | Credit anchor \\(\hat A^{q\leftarrow\mu}\\) | Re-estimate \\(A^q\\) with suffix correction, a \\(q\\)-critic, traces, or re-rolls instead of assuming rollout credit is unchanged. |
 | Drift during repeated optimizer updates | Update edge \\(U\\) | Use a differentiable shaper or dynamic trust-region test tied to the current policy. |
 | Both sources are small or cannot be separated operationally | Direct edge \\(E\\) | A coupled method is simpler, but gives up causal attribution between admission mismatch and update drift. |
 | A few tokens dominate the discrepancy | Token or distributional geometry | Use local ratio or divergence statistics rather than rejecting an entire response. |
@@ -734,15 +1085,21 @@ operator or geometry. Existing methods occupy only some combinations. The
 following examples illustrate open regions rather than claim new named
 algorithms or expected improvements:
 
-1. **Decoupled sequence shaping:**
+1. **Explicit proximal-credit realignment:**
+   \\(\mathrm W_{\mathrm{prefix}}(B)
+   \mathcal R_A^{\mu\to q}\mathrm C(U)\\), where
+   \\(\mathcal R_A^{\mu\to q}\\) uses a \\(q\\)-critic, a truncated trace, a
+   doubly robust estimator, or re-rolled suffixes. Existing mapped methods
+   largely leave this module implicit.
+2. **Decoupled sequence shaping:**
    \\(\mathrm W_{\mathrm{tok}}(B)\mathrm C_{\mathrm{geo}}(U)\\). Correct rollout
    mismatch token-wise, then constrain the update with a sequence-geometric
    proximal ratio.
-2. **Heterogeneous two-edge mitigation:** apply entropy-adaptive admission and
+3. **Heterogeneous two-edge mitigation:** apply entropy-adaptive admission and
    \\(\mathrm W(B)\\) on the behavior edge, followed by a divergence-based mask
    or shaper on \\(U\\). Each edge is treated with geometry appropriate to its
    source.
-3. **Segment-aware asynchronous mitigation:** normalize or truncate
+4. **Segment-aware asynchronous mitigation:** normalize or truncate
    \\(\mathrm W(B_t)\\) within policy-version segments, optionally read total
    mismatch \\(E\\) with a sequence gate, and retain \\(\mathrm C(U)\\) for the
    current update.
@@ -776,38 +1133,48 @@ therefore a geometry and normalization choice within the same solution space.
    backend precision, and piecewise versions.
 2. **Identify the proximal anchor.** State whether it equals behavior, is a
    frozen snapshot, or is approximated.
-3. **Locate every intervention.** Record its edge, operator, statistic,
+3. **Identify the credit anchor.** State whether the loss uses rollout credit,
+   estimates \\(A^q\\), or targets the exact current-policy advantage.
+4. **Locate every intervention.** Record its edge, operator, statistic,
    geometry, sign rule, and normalization domain.
-4. **Inspect compositions.** Distinguish deliberate bias–variance choices from
-   accidental missing or duplicated ratio factors.
-5. **Measure the coordinates separately.** Report token \\(\log B_t\\),
+5. **Inspect compositions.** Distinguish deliberate bias–variance choices from
+   accidental missing or duplicated ratio factors, and check whether masking
+   or group normalization changes the advantage semantics.
+6. **Measure the coordinates separately.** Report token \\(\log B_t\\),
    cumulative prefix and sequence log-ratios, \\(U\\), and \\(E\\). Track
    effective sample size before and after truncation, truncation or rejection
-   rates by response length, gradient variance, policy age, reward, and
-   throughput.
+   rates by response length, disagreement between rollout and proximal credit,
+   gradient variance, policy age, reward, and throughput.
 
 ## 4. Limitations and conclusion {#scope}
 
 The policy triangle organizes the mitigation solution space; it does not rank
 its coordinates. It cannot choose thresholds, guarantee that masking improves
-return, repair support mismatch, or replace empirical validation. It omits
-value/advantage off-policy correction, reward-model drift, environment
-nonstationarity, and optimizer-state staleness. Sequence-product importance
-sampling can be formally exact and statistically unusable, while geometric
-statistics can be stable without being exact change-of-measure factors.
+return, repair support mismatch, or replace empirical validation. It identifies
+credit realignment as a missing module but does not supply or compare a
+general-purpose \\(A^{q\leftarrow\mu}\\) estimator; critic learning, trace
+methods, and finite-group advantage theory remain open. It also omits
+reward-model drift, environment nonstationarity, and optimizer-state staleness.
+Sequence-product importance sampling can be formally exact and statistically
+unusable, while geometric statistics can be stable without being exact
+change-of-measure factors.
 
 Within this scope, the behavior, proximal, and current policies provide a
 compact set of anchors. Masks select regions, detached weights change measure,
-and differentiable shapers control the update; each chooses its own geometry.
-Bypass collapses the triangle, while decoupling separates exogenous rollout
-mismatch from endogenous update drift.
+and differentiable shapers control the update; each chooses its own geometry
+and must declare the policy under which credit is defined. Coupled bypass is
+the degenerate case \\(q=\mu\\), while a direct operator on \\(E=BU\\) with a
+distinct latent \\(q\\) is a collapsed, generally non-equivalent treatment.
+Decoupling separates exogenous rollout mismatch, proximal credit, and
+endogenous update drift.
 
 The main value is a clearer view of the whole solution space. The
 edge–operator–geometry representation separates **where mismatch is measured**,
-**what a mitigation mechanism does**, and **at what scale it acts**. Existing
-methods become recognizable combinations of shared choices rather than a list
-of unrelated losses. The same coordinates also expose open regions that can be
-tested without presenting them as established improvements.
+**what a mitigation mechanism does**, and **at what scale it acts**; the credit
+anchor states **which continuation policy the update evaluates**. Existing
+methods become recognizable approximations of a shared \\(q\\)-surrogate rather
+than a list of unrelated losses. The same coordinates also expose open regions
+that can be tested without presenting them as established improvements.
 
 ### Suggested citation {#citation}
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760" role="img" aria-labelledby="intro-title intro-desc">
-  <title id="intro-title">Policy-mismatch mitigation in asynchronous LLM reinforcement learning</title>
-  <desc id="intro-desc">The behavior policy generates rollout data, the proximal policy provides behavior correction and an update anchor, and the current policy is optimized. Mitigation methods are located by edge, operator, and geometry.</desc>
+  <title id="intro-title">Approximating a proximal-policy surrogate in asynchronous LLM reinforcement learning</title>
+  <desc id="intro-desc">The behavior policy generates rollout data and credit, the proximal policy anchors the required advantage A q, and the current policy is optimized. Mitigation methods are located by edge, operator, geometry, and credit anchor.</desc>
 
   <defs>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
@@ -20,7 +20,7 @@
   <g font-family="Arial, Helvetica, sans-serif">
     <text x="76" y="82" fill="#59636e" font-size="15" font-weight="700" letter-spacing="2.7">CONCEPTUAL OVERVIEW</text>
     <text x="76" y="128" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="37">Policy-mismatch mitigation in asynchronous LLM reinforcement learning</text>
-    <text x="76" y="162" fill="#59636e" font-size="18">Three policy roles separate data provenance, behavior correction, and proximal update control.</text>
+    <text x="76" y="162" fill="#59636e" font-size="18">Three policy roles separate past data correction, proximal credit, and current update control.</text>
     <line x1="76" y1="188" x2="1364" y2="188" stroke="#d8dde2" stroke-width="2"/>
   </g>
 
@@ -38,9 +38,9 @@
     <rect width="330" height="9" rx="4.5" fill="#2878ad"/>
     <text x="24" y="43" fill="#2878ad" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="1.8">DATA PROVENANCE</text>
     <text x="24" y="82" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="29">Behavior policy μ</text>
-    <text x="24" y="111" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="17">rollout distribution</text>
+    <text x="24" y="111" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="17">rollout distribution + credit</text>
     <line x1="24" y1="129" x2="306" y2="129" stroke="#c8ddea"/>
-    <text x="24" y="154" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14">generated and logged the sampled tokens</text>
+    <text x="24" y="154" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14">generated tokens and rollout credit A<tspan baseline-shift="sub" font-size="10">roll</tspan></text>
   </g>
 
   <g transform="translate(555 286)">
@@ -48,9 +48,9 @@
     <rect width="330" height="9" rx="4.5" fill="#c66d0a"/>
     <text x="24" y="43" fill="#c66d0a" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="1.8">LEARNER ADMISSION</text>
     <text x="24" y="82" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="29">Proximal policy q</text>
-    <text x="24" y="111" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="17">frozen update anchor</text>
+    <text x="24" y="111" fill="#35404a" font-family="Arial, Helvetica, sans-serif" font-size="17">frozen q-surrogate anchor</text>
     <line x1="24" y1="129" x2="306" y2="129" stroke="#ecd6bc"/>
-    <text x="24" y="154" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14">defines the start of the current update</text>
+    <text x="24" y="154" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14">requires proximal-policy credit A<tspan baseline-shift="super" font-size="10">q</tspan></text>
   </g>
 
   <g transform="translate(1034 286)">
@@ -69,8 +69,8 @@
     <rect width="135" height="42" rx="5" fill="#ffffff" stroke="#2878ad" stroke-width="1.5"/>
     <text x="67.5" y="27" text-anchor="middle" fill="#205f8b" font-family="Georgia, 'Times New Roman', serif" font-size="21">B = q / μ</text>
   </g>
-  <text x="472" y="410" text-anchor="middle" fill="#2878ad" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700">BEHAVIOR CORRECTION</text>
-  <text x="472" y="431" text-anchor="middle" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="11">detached weight or mask</text>
+  <text x="472" y="410" text-anchor="middle" fill="#2878ad" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700">PAST / DATA CORRECTION</text>
+  <text x="472" y="431" text-anchor="middle" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="11">prefix, detached weight, or mask</text>
 
   <!-- Update control -->
   <line x1="885" y1="374" x2="1014" y2="374" stroke="#c66d0a" stroke-width="5" marker-end="url(#arrow-orange)"/>
@@ -84,7 +84,7 @@
   <!-- Solution-space coordinates -->
   <g transform="translate(76 510)">
     <rect width="1288" height="165" rx="8" fill="#f6f8fa" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="22" y="33" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="2">MITIGATION SOLUTION SPACE</text>
+    <text x="22" y="33" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="2">q-SURROGATE APPROXIMATION SPACE</text>
     <line x1="22" y1="48" x2="1266" y2="48" stroke="#d8dde2"/>
 
     <g transform="translate(22 66)">
@@ -102,9 +102,9 @@
 
     <line x1="825" y1="66" x2="825" y2="143" stroke="#d8dde2"/>
     <g transform="translate(857 66)">
-      <text x="0" y="18" fill="#19845d" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">GEOMETRY · AT WHAT SCALE?</text>
+      <text x="0" y="18" fill="#19845d" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">GEOMETRY + CREDIT</text>
       <text x="0" y="50" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="20">token · prefix · sequence · group</text>
-      <text x="0" y="76" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="13">ratio, aggregation, or distributional statistic</text>
+      <text x="0" y="76" fill="#59636e" font-family="Arial, Helvetica, sans-serif" font-size="13">credit anchor: rollout · μ · q · π</text>
     </g>
   </g>
 </svg>
