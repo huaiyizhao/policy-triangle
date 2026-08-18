@@ -1,8 +1,8 @@
-# The Policy Triangle blog
+# A Unified Estimator View blog
 
-This repository publishes a technical blog about the policy-triangle framework
+This repository publishes a technical blog about a unified estimator framework
 for comparing methods that mitigate policy mismatch in LLM reinforcement
-learning.
+learning. The policy triangle is retained as an auxiliary ratio-placement map.
 
 ## Blog files
 
@@ -10,9 +10,9 @@ learning.
 - `docs/_layouts/technical.html` — Jekyll page shell
 - `docs/assets/technical.css` — responsive technical-blog styling
 - `docs/assets/policy-mismatch-intro.svg` — opening illustration
-- `docs/assets/policy-triangle-hero.svg` — detailed solution-space figure
-- `docs/assets/is-tail-operators.svg` — correction geometry and tail operators
-- `docs/assets/bias-variance-tradeoff.svg` — exactness and stability trade-offs
+- `docs/assets/policy-triangle-hero.svg` — compact ratio-placement figure
+- `docs/assets/is-tail-operators.svg` — estimator statistic, mask, and weight choices
+- `docs/assets/bias-variance-tradeoff.svg` — appendix-level statistical intuition
 
 ## Preview
 
@@ -30,6 +30,7 @@ PDF download.
 
 ## Scope
 
-The article offers a unified view of the mitigation solution space. Its
-contribution is a common coordinate system for comparing existing mechanisms,
-not a new optimizer, convergence theorem, or empirical performance claim.
+The article offers a unified estimator view of the mitigation solution space.
+Its contribution is a shared estimator template and conditional decision
+process for comparing existing mechanisms, not a new optimizer, convergence
+theorem, or empirical performance claim.

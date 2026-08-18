@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="is-title is-desc">
-  <title id="is-title">Importance-sampling geometry and tail operators</title>
-  <desc id="is-desc">A two-stage academic diagram. First choose a token, prefix, sequence, or geometric statistic. Then choose raw importance sampling, truncated importance sampling, masked importance sampling, or rejection sampling. Transfer curves show that IS keeps the raw ratio, TIS caps it, MIS drops the tail while keeping the importance weight below the threshold, and RS is a binary selection mask.</desc>
+  <title id="is-title">Configuring the statistic, mask, and weight slots</title>
+  <desc id="is-desc">A two-stage academic diagram for the unified estimator. First choose a token, prefix, sequence, or geometric statistic S. Then configure the mask M and detached weight W as raw importance sampling, truncated importance sampling, masked importance sampling, or rejection sampling.</desc>
 
   <defs>
     <marker id="down-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
@@ -12,12 +12,12 @@
   <rect x="34" y="34" width="1372" height="832" rx="10" fill="#ffffff" stroke="#d8dde2" stroke-width="2"/>
 
   <g font-family="Arial, Helvetica, sans-serif">
-    <text x="70" y="79" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="34">Rollout correction = ratio statistic × tail operator</text>
-    <text x="70" y="109" fill="#59636e" font-size="17">Geometry decides what distributional mismatch is represented; the operator decides how its tail contributes.</text>
+    <text x="70" y="79" fill="#17202a" font-family="Georgia, 'Times New Roman', serif" font-size="34">Configuring M(S) and W̃ inside the unified estimator</text>
+    <text x="70" y="109" fill="#59636e" font-size="17">The statistic decides what mismatch is visible; mask and weight semantics decide how its tail contributes.</text>
 
     <!-- Step 1 -->
     <rect x="62" y="135" width="1316" height="230" rx="8" fill="#f8fafb" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="84" y="166" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 1 · CHOOSE THE STATISTIC</text>
+    <text x="84" y="166" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 1 · CHOOSE THE STATISTIC S</text>
 
     <g transform="translate(84 187)">
       <rect width="286" height="142" rx="7" fill="#f4f9fc" stroke="#2878ad" stroke-width="2"/>
@@ -61,7 +61,7 @@
 
     <!-- Step 2 -->
     <rect x="62" y="405" width="1316" height="370" rx="8" fill="#f8fafb" stroke="#d8dde2" stroke-width="1.5"/>
-    <text x="84" y="436" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 2 · CHOOSE THE TAIL OPERATOR</text>
+    <text x="84" y="436" fill="#59636e" font-size="14" font-weight="700" letter-spacing="2">STEP 2 · CONFIGURE MASK M AND DETACHED WEIGHT W̃</text>
 
     <!-- IS -->
     <g transform="translate(84 456)">
@@ -141,8 +141,8 @@
 
     <!-- Identities -->
     <rect x="62" y="797" width="1316" height="48" rx="6" fill="#17202a"/>
-    <text x="84" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">Seq-MIS = sequence RS mask × sequence IS weight</text>
+    <text x="84" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">MIS = M(S) × raw W̃ · RS = M(S) with W̃ = 1</text>
     <line x1="624" y1="808" x2="624" y2="834" stroke="#536571"/>
-    <text x="654" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">Geo-RS + Token-TIS = length-normalized gate × local capped weights</text>
+    <text x="654" y="827" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="18">Geo-RS + Token-TIS = length-normalized M(S) × local capped W̃</text>
   </g>
 </svg>

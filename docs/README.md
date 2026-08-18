@@ -1,8 +1,8 @@
-# Policy Triangle blog
+# A Unified Estimator View blog
 
 This directory is a standalone GitHub Pages site for:
 
-> **The Policy Triangle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning**
+> **A Unified Estimator View of Policy-Mismatch Mitigation in LLM Reinforcement Learning**
 
 ## Edit the article
 
@@ -12,9 +12,9 @@ responsibility:
 - **_layouts/technical.html** — page shell, navigation, metadata, and MathJax
 - **assets/technical.css** — restrained technical styling
 - **assets/policy-mismatch-intro.svg** — accessible opening illustration
-- **assets/policy-triangle-hero.svg** — detailed policy-triangle figure
-- **assets/is-tail-operators.svg** — correction geometry and tail operators
-- **assets/bias-variance-tradeoff.svg** — exactness and stability trade-offs
+- **assets/policy-triangle-hero.svg** — compact ratio-placement figure
+- **assets/is-tail-operators.svg** — estimator statistic, mask, and weight choices
+- **assets/bias-variance-tradeoff.svg** — appendix-level statistical intuition
 
 GitHub Pages runs Jekyll automatically. If Jekyll is installed locally, preview
 from the repository root with:

@@ -1,15 +1,15 @@
 ---
 layout: technical
-title: The Policy Triangle
-short_title: The Policy Triangle
-subtitle: A Unified View of Policy-Mismatch Mitigation in LLM Reinforcement Learning
-description: A unified view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
+title: A Unified Estimator View
+short_title: Unified Estimator View
+subtitle: Policy-Mismatch Mitigation in LLM Reinforcement Learning
+description: A unified estimator view of methods for mitigating mismatch among behavior, proximal, and current policies in LLM reinforcement learning.
 author: Huaiyi Zhao
 date: 2026-08-19
 ---
 
 <figure class="hero-figure">
-  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic graphical abstract showing the progression from the exact off-policy policy gradient to the local q-surrogate and its decoupled approximation surfaces: behavior correction B from mu to q, credit realignment toward A q, and proximal update U from q to pi. Existing LLM methods concentrate on B and U, while explicit credit realignment remains comparatively underexplored.">
+  <img src="{{ '/assets/policy-mismatch-intro.svg' | relative_url }}" alt="Academic graphical abstract centered on a unified policy-gradient estimator. The behavior policy mu generates data, q anchors the local surrogate, and pi is trainable. Colored estimator slots choose a statistic and mask, a detached behavior weight, an update shaper and credit signal, and a score term.">
 </figure>
 
 <div class="abstract" markdown="1">
@@ -21,19 +21,19 @@ generation from optimization. The policy that generated a response can
 therefore differ from both the policy that anchors an update and the policy
 currently being trained. Existing mitigation methods use rejection, importance
 weighting, clipping, and divergence control, but are often presented as
-unrelated algorithms. This article places them in one solution space using the
-policy triangle. A method is located by three coordinates: the **edge** on which
-mismatch is measured, the **operator** that selects, reweights, or shapes an
-update, and the **geometry**—token, sequence, group, or distribution—on which
-that operator acts. A fourth label, the **credit anchor**, records whether the
-advantage is generated under the behavior policy, aligned to the proximal
-policy, or simply assumed to be close. Mapping existing methods into these
-coordinates separates shared design choices from method-specific details and
-exposes open regions of the mitigation space. The framework is a unified view
-of approximations to a proximal-policy surrogate, not a new optimizer,
-unbiasedness result, or convergence claim. The main text emphasizes
-interpretive conclusions; a technical appendix records the derivations and
-exactness conditions.
+unrelated algorithms. This article treats them as configurations of one
+estimator for a proximal-policy surrogate. A configuration chooses a mismatch
+statistic, a mask, a detached weight, an update shaper, and a credit signal.
+Token-, prefix-, sequence-, and distribution-level rules specify what the
+estimator observes; IS, TIS, MIS, and rejection specify how its tail enters;
+PPO- and GSPO-like terms specify how the trainable update is shaped. The
+behavior, proximal, and current policies remain useful for locating those
+choices, but the policy triangle is an auxiliary ratio map rather than the
+framework itself. Mapping existing methods into the estimator exposes both
+shared design decisions and combinations that remain open. The result is a
+unified view of approximations to a proximal-policy surrogate, not a new
+optimizer, unbiasedness result, or convergence claim. Derivations and the full
+error decomposition are kept in the technical appendix.
 
 </div>
 
@@ -43,7 +43,7 @@ Policy-gradient training reuses responses after they have been generated.
 Classical methods already separate sampling from updating, but the successive
 steps from exact policy gradient to TRPO, PPO, and Decoupled PPO also change
 what objective is being estimated. Making that evolution explicit gives the
-policy triangle a precise target: most methods studied below are estimators or
+unified estimator a precise target: most methods studied below are estimators or
 robust approximations of a proximal-policy surrogate, not unbiased estimators
 of the current-policy gradient at an arbitrary \\(\pi\\).
 
@@ -266,23 +266,15 @@ The remainder therefore stays focused on how practical methods approximate or
 robustify this Decoupled-PPO \\(q\\)-surrogate; correcting a rollout ratio does
 not by itself remove the surrogate's local-model error or realign its credit.
 
-### 1.5 The solution space studied here
+### 1.5 From named methods to estimator design
 
 The rest of this article uses the Decoupled-PPO \\(q\\)-surrogate as its default
 reference estimand and treats existing mitigations as alternative estimators or
 robust approximations around it. A direct full-sequence estimator that instead
 targets the exact current-policy gradient is marked as such rather than being
-silently identified with the surrogate. The methods repeatedly make four
-choices:
-
-1. **Edge:** act on behavior mismatch \\(B\\), update drift \\(U\\), or their
-   collapsed product \\(E=BU\\).
-2. **Operator:** select with a mask, reweight with a detached coefficient, or
-   shape a differentiable update.
-3. **Geometry:** use a token, prefix, sequence, group, sampled ratio, or fuller
-   distributional statistic.
-4. **Credit anchor:** use rollout-generated credit, explicitly estimate
-   \\(A^q\\), or assume the two are close.
+silently identified with the surrogate. The organizing question is no longer
+“which named loss should be used?” but “which estimator should be built for
+the mismatch actually present?”
 
 Rollout correction, TIS, MIS, and rejection sampling explore different
 approximations on the behavior or direct edge
@@ -294,40 +286,63 @@ geometry ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)); DPPO and TRM
 use distributional mismatch ([Qi et al., 2026](https://arxiv.org/abs/2602.04879);
 [Li et al., 2025](https://arxiv.org/abs/2512.23075)); and A-3PO approximates the
 proximal anchor ([Li et al., 2025](https://arxiv.org/abs/2512.06547)). They are
-not unrelated losses: they occupy different approximation coordinates around
-the same local-surrogate structure.
+not unrelated losses: they are different settings of the same estimator
+slots. This view does not claim that every setting is unbiased, nor does it
+introduce a new optimizer or convergence theorem.
 
-> **Position of this note.** The policy triangle is a coordinate system for
-> this surrogate-estimation solution space. It distinguishes exact raw IS,
-> biased variance-control operators, and differentiable optimizer shaping; it
-> does not claim that every mapped method is an unbiased estimator of the
-> current-policy gradient, nor does it introduce a new optimizer or convergence
-> theorem.
+## 2. A unified estimator view {#framework}
 
-## 2. The policy triangle as a unified solution space {#framework}
+Unless stated otherwise, the reference estimand is the Decoupled-PPO
+\\(q\\)-surrogate highlighted in Section 1.4. A broad class of practical
+policy-loss gradients can be written as
 
-The policy triangle is the framework behind the unified view. Unless stated
-otherwise, the reference estimand is the Decoupled-PPO \\(q\\)-surrogate
-highlighted in Section 1.4. A useful mental model is a three-stage pipeline:
-**admit or correct old data**, **assign compatible credit**, then **shape the
-new update**.
+<div class="equation key-equation">
 
-A mapped method may estimate this expression exactly, approximate one of its
-factors, or deliberately replace it with a more robust masked or shaped
-objective. The framework separates four questions that named algorithms often
-mix together:
+<div class="equation-label">Unified policy-mismatch estimator</div>
 
-1. **Where is mismatch measured?** Choose an edge.
-2. **What does the mitigation do?** Choose an operator.
-3. **At what scale does it act?** Choose a geometry.
-4. **Which policy supplies credit?** State the advantage anchor.
+\[
+\boxed{
+\widehat g
+=
+\sum_t
+\mathbb E_{y\sim\color{#2878ad}{\mu}}
+\left[
+\color{#2878ad}{M(S)}\,
+\color{#c66d0a}{\widetilde W(B)}\,
+\color{#6947a4}{\widetilde\Psi(U,\hat A)}\,
+\color{#19845d}{s_t}
+\right]
+}
+\]
 
-A mitigation method occupies one or more coordinates plus a credit label.
-Methods that look different may share coordinates; methods with similar names
-may act on different edges, assume different advantages, or have different
-gradient semantics.
+</div>
 
-### 2.1 Policy anchors, edges, and operators
+Here \\(s_t=\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\). The five visible
+slots answer five different questions:
+
+| Slot | Question | Typical choices |
+|---|---|---|
+| Statistic \\(S\\) | What mismatch is measured, and at what scale? | Token, prefix, sequence, geometric mean, sampled-token KL, full-distribution divergence. |
+| Mask \\(M(S)\\) | Which observations are admitted? | Identity, ratio band, MIS tail mask, Geo-RS, worst-token or divergence gate. |
+| Weight \\(\widetilde W(B)\\) | How does accepted behavior data influence the target measure? | None, raw IS, TIS, tapered or self-normalized IS. |
+| Update and credit \\(\widetilde\Psi(U,\hat A)\\) | How is the trainable step shaped, and which policy supplies credit? | Unclipped \\(U\hat A\\), PPO, GSPO; rollout credit, \\(A^q\\), or an explicit realignment estimator. |
+| Score \\(s_t\\) | Which policy receives the gradient? | The current trainable policy \\(\pi_\theta\\). |
+
+For compact method mappings below, \\(\mathrm C(U;\hat A)\\) denotes the
+differentiable shaper inside \\(\widetilde\Psi(U,\hat A)\\).
+
+Every named method fills these slots, sometimes with the identity. A pure RS
+method sets a mask but may leave the weight equal to one; MIS combines a mask
+with a raw IS weight; TIS changes the weight but keeps the sample; PPO changes
+the update shaper rather than the detached behavior weight. This separation is
+the core of the unified view.
+
+The formula is intentionally an estimator template rather than an automatic
+correctness claim. Exactness depends on its full configuration and on the
+stated reference target. The corresponding error decomposition is placed in
+[Appendix A.9](#appendix-a9).
+
+### 2.1 The policy triangle as a ratio-placement aid
 
 For prompt \\(x\\), response \\(y=(y_1,\ldots,y_T)\\), and token context
 \\(h_t=(x,y_{\lt t})\\), write the sampled-token probabilities as
@@ -351,44 +366,10 @@ E_t=\frac{\pi_t}{\mu_t}=B_tU_t.
 | Update edge | \\(U=\pi/q\\) | Drift created by the current optimization step relative to its proximal anchor. |
 | Direct edge | \\(E=\pi/\mu=BU\\) | Total behavior-to-current mismatch after the two roles have been collapsed. |
 
-The ideal surrogate also requires a compatible credit signal. The edge
-factorization alone does not turn a return generated by a \\(\mu\\)-suffix into
-\\(A_t^q\\):
-
-<div class="equation">
-\[
-\underbrace{B_{1:t}}_{\text{past correction}}
-\quad
-\underbrace{A_t^{q\leftarrow\mu}}_{\text{future credit realignment}}
-\quad
-\underbrace{U_t}_{\text{proximal update}}.
-\]
-</div>
-
-Here \\(A_t^{q\leftarrow\mu}\\) denotes an estimator intended to target
-\\(A_t^q\\) using behavior-generated data. It may use suffix IS
-\\(B_{t+1:T}\\), a \\(q\\)-critic, a trace estimator, re-rolled continuations, or
-no explicit correction at all. In the last case the method uses a rollout
-credit signal \\(\hat A^{\mathrm{roll}}\\) and implicitly assumes
-\\(\hat A^{\mathrm{roll}}\approx A^q\\). For GRPO-style group normalization,
-\\(\hat A^{\mathrm{roll}}\\) is safer terminology than literally calling the
-response-level signal a token-level \\(A^\mu\\).
-
-The three operator classes differ by gradient semantics rather than by the
-names used in a particular implementation.
-
-<div class="table-wrap" markdown="1">
-
-| Operator | Definition | Gradient semantics | Mitigation role |
-|---|---|---|---|
-| Mask \\(\mathrm M\\) | \\(\mathrm M_{g,s}(X,\hat A)\in\{0,1\}\\) | Detached | **Select:** admit or reject a token, sequence, or group using a ratio band, divergence, age, or metadata. |
-| Weight \\(\mathrm W\\) | \\(\mathrm W_{g,s}(X)=\operatorname{sg}[f_{g,s}(X)]\ge0\\) | Detached | **Reweight:** change measure or influence using raw, truncated, tapered, or self-normalized importance sampling. |
-| Shaper \\(\mathrm C\\) | Enters the loss through \\(\pi_\theta\\) | Differentiable | **Constrain:** reshape the current update using clipping, smooth saturation, a divergence penalty, or a trust-region geometry. |
-
-</div>
-
-Parameter dependence gives the edges a natural, but not exclusive, division of
-labor:
+The triangle adds only one piece of information to the estimator: **which
+ratio a statistic or operator reads**. It is a placement aid, not the complete
+solution space. Parameter dependence gives the edges a natural, but not
+exclusive, division of labor:
 
 <div class="table-wrap" markdown="1">
 
@@ -400,34 +381,24 @@ labor:
 
 </div>
 
-The canonical factorized composition is therefore
+The common factorized configuration is therefore
 
 <div class="equation">
 \[
 \boxed{
-\mathrm M(B)\,\mathrm W(B)\,
-\mathrm C\!\left(U;\hat A^{q\leftarrow\mu}\right)
+\mathrm M\!\left(S(B)\right)\,
+\widetilde{\mathrm W}(B)\,
+\widetilde\Psi\!\left(U,\hat A^{q\leftarrow\mu}\right)
 }
-\qquad
-\text{correct past data on }B,\text{ supply }q\text{-credit, shape }U.
 \]
 </div>
 
-Here either detached operator may be the identity when no filtering or
-reweighting is required. The credit label is not a fourth multiplicative ratio:
-it records which continuation distribution the integrand targets. A shaper may
-also be conditioned on behavior mismatch, \\(\mathrm C(U;B,\hat A)\\), while
-still acting through the trainable edge \\(U\\).
-
-On the direct edge, \\(\mathrm M(E)\\) means pure selection;
-\\(\mathrm W(E)\\), optionally preceded by a mask, means detached weighting;
-and \\(\mathrm C(E)\\), again optionally pre-filtered, means coupled shaping.
-
-Using \\(\mathrm W(E)\mathrm C(E)\\), with or without \\(\mathrm M(E)\\), is
-not the default change-of-measure construction. If both \\(\mathrm W\\) and
-\\(\mathrm C\\) reduce to one factor of \\(E\\) in their linear limit, their
-product reduces to \\(E^2\\); such a design requires a deliberate alternative
-interpretation rather than being counted as one correction.
+The mask admits behavior data, the weight approximates change of measure, and
+the update term shapes the move from \\(q\\) to \\(\pi\\) while declaring its
+credit anchor. In a coupled topology \\(q=\mu\\), \\(B=1\\) and the same roles
+collapse onto \\(E=U\\). With a distinct \\(q\\), an operator on \\(E=BU\\)
+measures total endpoint mismatch but no longer reveals whether it came from
+stale rollout data or the current optimizer step.
 
 PPO's active gradient region depends on both the ratio and the sign of the
 advantage. Selecting the clipped branch removes gradient in one direction;
@@ -441,19 +412,16 @@ giving \\(\mathrm C_{\mathrm{geo}}(E)\\) in a coupled topology or
 ([Zheng et al., 2025](https://arxiv.org/abs/2507.18071)).
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Graphical abstract of the policy triangle. The behavior edge B carries past data correction, the proximal vertex requires credit anchored at A q, the update edge U shapes the current update, and bypass is the special case q equals mu so B equals one and U equals E. Representative cards map IS, rejection sampling, IcePop, and KPop.">
+  <img src="{{ '/assets/policy-triangle-hero.svg' | relative_url }}" alt="Compact policy-triangle ratio map. The behavior edge B equals q over mu, the update edge U equals pi over q, and the direct edge E equals pi over mu and factors as B times U. The diagram labels the natural estimator attachments on each edge.">
   <figcaption>
-    Figure 1. Approximating the \\(q\\)-surrogate. The behavior edge carries
-    past/data correction, the proximal vertex anchors the required credit
-    \\(A^q\\), and the update edge carries differentiable control. Coupled
-    bypass sets \\(q=\mu\\), so \\(B=1\\), \\(A^q=A^\mu\\), and \\(U=E\\);
-    nonlinear direct operators on \\(E=BU\\) otherwise represent a collapsed,
-    generally non-equivalent treatment. Representative cards map methods from
-    Section 2.5.
+    Figure 1. The policy triangle is a compact ratio-placement map inside the
+    unified estimator. \\(B\\) describes behavior-to-anchor mismatch, \\(U\\)
+    describes the trainable update, and \\(E=BU\\) collapses both. It does not
+    by itself specify geometry, tail treatment, or credit.
   </figcaption>
 </figure>
 
-### 2.2 Direct and factorized topologies
+#### Coupled and factorized topologies
 
 **Coupled bypass.** Set \\(q\equiv\mu\\). The behavior policy becomes the
 proximal anchor, so
@@ -517,7 +485,7 @@ approximates it by interpolating behavior and current log-probabilities to avoid
 an additional model forward pass while retaining the factorization \\(E=BU\\)
 ([Li et al., 2025](https://arxiv.org/abs/2512.06547)).
 
-### 2.3 Correction geometry and detached tail treatments
+### 2.2 Choosing the statistic, mask, and weight
 
 This section expands approximations to the past/data factor \\(B_{1:t}\\). The
 optimizer-side shaper \\(\mathrm C(U)\\) is held conceptually separate, and the
@@ -617,11 +585,12 @@ the product, but it pays for that stability by not correcting how the prefix
 itself was generated.
 
 <figure class="triangle-figure">
-  <img src="{{ '/assets/is-tail-operators.svg' | relative_url }}" alt="Academic diagram separating importance-sampling geometry from tail operators. Token, prefix, sequence, and geometric statistics feed into IS, TIS, MIS, and rejection sampling. IS keeps the raw ratio, TIS caps it, MIS masks the tail while retaining the IS weight, and rejection sampling applies a pure selection mask.">
+  <img src="{{ '/assets/is-tail-operators.svg' | relative_url }}" alt="Academic diagram showing how the statistic S and the mask and weight slots of the unified estimator are configured. Token, prefix, sequence, and geometric statistics feed into IS, TIS, MIS, and rejection sampling.">
   <figcaption>
-    Figure 2. Rollout correction is the composition of a ratio statistic and a
-    tail operator. The same operator can act at token or sequence scale; the
-    geometric mean is a length-normalized gating statistic, not an IS weight.
+    Figure 2. Configuring \\(S\\), \\(M(S)\\), and \\(\widetilde W\\). Geometry
+    decides what mismatch is summarized; the tail rule decides whether it is
+    retained, capped, masked-and-weighted, or used only for selection. A
+    geometric mean is a length-normalized gate, not an IS weight.
   </figcaption>
 </figure>
 
@@ -683,6 +652,10 @@ different codebases; the formula should take precedence over the acronym.
 
 #### Reading the bias–variance trade-off
 
+This comparison is local to the measure-and-tail slots after the target,
+credit, and topology have been fixed. It explains statistical pressure; it is
+not the method-selection procedure, which appears in Section 3.3.
+
 The operator determines how the tail is treated; the geometry determines what
 kind of mismatch remains:
 
@@ -710,123 +683,56 @@ kind of mismatch remains:
 The exact TIS and MIS bias terms are recorded in
 [Appendix A.7](#appendix-a7).
 
-<figure class="triangle-figure">
-  <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Schematic bias-versus-variance map relative to the unclipped q-surrogate with aligned A q. Sequence IS and Prefix IS lie on the zero-bias boundary at different variance levels; Token IS has lower variance and occupancy bias. TIS, MIS, Geo-RS, and Geo-RS plus Token-TIS occupy progressively more stable but biased regions, with exact positions depending on thresholds and data.">
-  <figcaption>
-    Figure 3. Schematic bias–variance trade-offs relative to the unclipped
-    \\(q\\)-surrogate with aligned \\(A^q\\). Raw Prefix-IS and Seq-IS are exact
-    under this reference, but Seq-IS carries unnecessary future-ratio
-    variance. Shorter horizons and stronger tail control generally trade more
-    bias for stability. Positions are qualitative and threshold-dependent.
-  </figcaption>
-</figure>
-
 These rankings require qualifications. Bounds such as polynomial token-level
 variance or capped sequence-level variance assume bounded score and
 return/advantage terms; stale or incorrect advantages can still dominate. A
 fixed threshold can also create length-conditioned truncation or rejection, so
 ESS and acceptance rates should always be reported by response length.
 Finally, detached TIS is not PPO clipping: TIS caps a statistical weight,
-whereas PPO uses an advantage-dependent differentiable shaper as described in
-Section 2.1.
+whereas PPO uses an advantage-dependent differentiable update shaper.
 
-A broad class of critic-free policy-loss gradients can now be read as an
-explicit composition:
+### 2.3 Composition requires a full configuration
 
-<div class="equation">
-\[
-\widehat g=
-\frac{1}{Z}\sum_i
-\mathrm M_i\,\overline{\mathrm W}_i\,\mathrm C_i\,
-\hat A_i^{\,\alpha}
-\nabla_\theta\log\pi_\theta(y_i\mid h_i),
-\qquad
-\alpha\in\{\mathrm{roll},\mu,q,\pi\}.
-\tag{2}
-\]
-</div>
-
-A concrete attachment is specified by
-\\((\text{edge},\text{operator},\text{scope},\text{statistic},
-\text{sign rule},\text{normalization},\text{credit anchor})\\). Exactness is a
-property of this full tuple relative to a stated estimand; it is not a property
-of a ratio or operator name in isolation.
-
-### 2.4 Combining mitigation mechanisms
-
-The factorization \\(E=BU\\) does not make interventions interchangeable. Where
-an operator is attached determines what mismatch it sees, how often it must be
-recomputed, and which bias–variance trade-off it introduces.
-
-#### Nonlinear placement matters
+The factorization \\(E=BU\\) does not make nonlinear interventions
+interchangeable:
 
 <div class="equation">
 \[
 \operatorname{clip}(E)\ne
 \operatorname{clip}(B)\operatorname{clip}(U),\qquad
 \mathrm M(E)\ne\mathrm M(B)\mathrm M(U).
-\tag{3}
+\tag{2}
 \]
 </div>
 
-For \\(k_3(x)=x-1-\log x\\),
-the direct statistic also contains a cross-edge interaction term. Therefore,
-filtering total mismatch is not equivalent to filtering the behavior and
-update edges independently. A mask may nevertheless read any edge without
-forcing a downstream importance weight to consume the same edge. The
-interaction identity is in [Appendix A.8](#appendix-a8).
+Filtering total mismatch is therefore not equivalent to filtering behavior
+mismatch and update drift separately. The same caution applies to credit:
+PPO's branch depends on the sign of \\(\hat A\\), and rejecting one response in
+a GRPO group can change the normalized credit of the others. Normalization is
+also part of the configuration because token-, sequence-, group-, and
+batch-level normalization define different estimators.
 
-#### Credit correction does not always commute with the operators
+The main text uses one practical check: if an estimator is meant to recover
+the unshaped behavior-to-current kernel, its linear limit should contain one
+factor of \\(E=BU\\), not accidentally \\(E^2\\). The interaction identities,
+baseline caveat, normalization formula, and complete error decomposition are
+kept in [Appendix A.8](#appendix-a8) and
+[Appendix A.9](#appendix-a9).
 
-The credit anchor is a separate design coordinate, but it is not a black-box
-module that can always be inserted before or after the other operators. PPO
-clipping selects a branch using the sign of \\(\hat A\\); suffix truncation
-changes the conditional return being estimated; and a trajectory-dependent
-mask can destroy the usual baseline cancellation.
+## 3. Mapping existing methods and choosing interventions {#taxonomy}
 
-The same issue is stronger for GRPO-style group centering and standardization,
-because rejecting one response can change the credit assigned to the others.
-Thus a method may classify credit realignment separately, but its masked,
-clipped, or group-normalized objective must still be derived jointly. TRM, for
-example, notes that its reward-form and advantage-form masked objectives
-coincide only when the mask is identically one
-([Li et al., 2025](https://arxiv.org/html/2512.23075v5#A7)). The formal
-non-cancellation statement is in [Appendix A.8](#appendix-a8).
+### 3.1 Mapping named methods into estimator configurations
 
-#### Normalization after truncation
-
-After an IS geometry and truncation rule have been chosen, self-normalization
-is an orthogonal variance-control decision. It rescales accepted weights to
-keep their average near one. Its domain—token, sequence, prompt group, or
-batch—is part of the algorithm. The precise formula is given in
-[Appendix A.8](#appendix-a8). It stabilizes mean gradient scale but is biased
-at finite sample size
-([Owen, 2013](https://artowen.su.domains/mc/)).
-
-#### A bookkeeping sanity check
-
-When an estimator is specifically intended to reproduce the direct
-behavior-to-current change-of-measure kernel, its unshaped limit should reduce
-to \\(E=BU\\). This conditional check can catch accidental duplication: for
-example, \\(\mathrm W(E)\mathrm C(E)\\) reduces to \\(E^2\\), whereas the factorized
-construction \\(\mathrm W(B)\mathrm C(U)\\) reduces to \\(BU\\).
-
-This is an implementation diagnostic, not a correctness or unbiasedness
-criterion. Clipping, masking, geometric aggregation, and self-normalization may
-deliberately move an estimator away from that limit.
-
-### 2.5 Mapping existing methods into the solution space {#taxonomy}
-
-The table maps representative methods by topology and by their dominant
-solution-space coordinates. It does not attempt to enumerate all critic,
-trace, or group-advantage constructions, but records the credit assumption
+The table maps representative methods into the estimator slots. It does not
+attempt to enumerate all critic, trace, or group-advantage constructions, but
+records the credit assumption
 because that assumption determines what the displayed ratio can estimate.
 Reward shaping, entropy bonuses, dynamic sampling, and systems optimizations
 remain outside the table.
 
 <div class="table-wrap" markdown="1">
 
-| Method family | Topology | Solution-space coordinate | Credit assumption | Mitigation role |
+| Method family | Topology | Estimator configuration | Credit assumption | Mitigation role |
 |---|---|---|---|---|
 | [PPO](https://arxiv.org/abs/1707.06347) / [GRPO](https://arxiv.org/abs/2402.03300) / [DAPO](https://arxiv.org/abs/2503.14476) | Coupled bypass | \\(\mathrm C_{\mathrm{tok}}(E)\\), with \\(q=\mu\\) | Fresh-rollout credit; ideally \\(A^\mu=A^q\\). | One direct ratio carries correction and proximal-control roles; DAPO uses asymmetric bounds. |
 | [CISPO](https://arxiv.org/abs/2506.13585) / [TOPR](https://arxiv.org/abs/2503.14286) | Direct | \\(\mathrm W_{\mathrm{tok}}(E)\\) | Rollout credit; no explicit continuation realignment. | Detached clipped or tapered weight; gradients need not vanish outside a PPO band. |
@@ -893,21 +799,21 @@ mask defined by the loss.
 because it explicitly inserts a proximal policy between behavior and current
 policies. [AReaL](https://arxiv.org/abs/2505.24298) and
 [A-3PO](https://arxiv.org/abs/2512.06547) operationalize or approximate that
-factorization for asynchronous LLM training. The policy triangle broadens that
-factorization into an edge–operator–geometry solution space without prescribing
-a particular proximal anchor.
+factorization for asynchronous LLM training. The unified estimator broadens
+that factorization by separating admission, weighting, update shaping, and
+credit without prescribing a particular proximal anchor.
 
 The [veRL rollout-correction formulation](https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html)
 and [FP8-RL](https://arxiv.org/abs/2601.18150) compare practical TIS, MIS,
-rejection, bypass, and decoupled configurations. The triangle abstracts that
-implementation pipeline and additionally places direct PPO, GSPO, and
-divergence-based shapers in the same coordinates.
+rejection, bypass, and decoupled configurations. The estimator template
+abstracts that implementation pipeline and additionally places direct PPO,
+GSPO, and divergence-based shapers in the same slots.
 
 [RPG](https://arxiv.org/abs/2505.17508) and the
 [off-policy interpretation of group-relative REINFORCE](https://arxiv.org/abs/2509.24203)
 give deeper analyses of KL regularization, baselines, and data shaping. Those
-works analyze parts of the credit problem more deeply than the anchor label
-used here. The triangle records whether credit targets \\(\mu\\), \\(q\\), or
+works analyze parts of the credit problem more deeply than the credit slot used
+here. The estimator records whether credit targets \\(\mu\\), \\(q\\), or
 \\(\pi\\), but does not attempt to subsume the full theory of critic learning,
 trace estimators, or group-normalized advantages.
 [Jackpot](https://arxiv.org/abs/2602.06107) also lies partly outside the view
@@ -915,14 +821,13 @@ because it changes the behavior distribution through rejection and joint
 rollout-model updates, rather than only operating on stored trajectories
 downstream.
 
-## 3. Implications and open regions in the solution space {#implications}
+### 3.2 Compare configurations by the problem they address {#implications}
 
-Once mitigation methods are separated into edge, operator, and geometry, their
-design trade-offs become easier to state. The framework does not prescribe one
-best method; it shows which problem a choice is trying to solve and which
-alternatives remain available.
+The estimator slots do not define a universal ranking. They make a more useful
+comparison possible: which error source does a configuration address, and
+which approximation does it deliberately leave in place?
 
-### 3.1 Reading mitigation choices from their coordinates
+#### Start from the observed failure
 
 | Observed issue | Relevant coordinate | Design implication |
 |---|---|---|
@@ -933,13 +838,70 @@ alternatives remain available.
 | A few tokens dominate the discrepancy | Token or distributional geometry | Use local ratio or divergence statistics rather than rejecting an entire response. |
 | Coherence of the whole response matters | Sequence geometry | Use sequence-product, geometric, worst-token, or sequence-divergence statistics according to the intended semantics. |
 
-A useful default is therefore to place detached statistical correction near the
-behavior anchor and differentiable control near the current anchor. This is a
-design heuristic, not a theorem. A direct method may be preferable when
-staleness is low, an extra proximal forward pass is expensive, or the system
-does not retain a distinct \\(q\\).
+A useful default is therefore to place detached statistical correction near
+the behavior anchor and differentiable control near the current anchor. A
+direct configuration may be preferable when staleness is low, an extra
+proximal forward pass is expensive, or the system does not retain a distinct
+\\(q\\).
 
-### 3.2 Open regions suggested by the framework
+### 3.3 A practical decision flow
+
+The decision flow follows the derivation of the reference estimator rather
+than a qualitative bias–variance ranking:
+
+Its theoretical basis is layered. The performance-difference identity and
+TRPO determine the local \\(q\\)-surrogate; Radon–Nikodym change of measure and
+per-decision IS determine the exact ratio horizon; robust estimation motivates
+caps and masks when raw weights are unusable; proximal optimization determines
+how \\(U\\) is shaped; and off-policy value estimation determines whether the
+credit term targets \\(A^q\\). These results constrain the valid choices, but
+do not produce a distribution-free best threshold.
+
+1. **Fix the target and credit.** Decide whether the update targets the local
+   \\(q\\)-surrogate and whether \\(A^q\\) is available. If only a sampled
+   terminal return is available, record that future/credit realignment is
+   still being approximated.
+2. **Check whether the local surrogate is still credible.** If \\(\pi\\) has
+   moved far from \\(q\\), changing \\(M\\) or \\(W\\) cannot repair the local
+   TRPO/PPO model. Refresh \\(q\\), reduce optimization epochs, or tighten the
+   update before refining rollout correction.
+3. **Check coverage from \\(\mu\\) to \\(q\\).** If relevant \\(q\\)-actions have
+   no support under \\(\mu\\), no IS variant can recover them. New rollouts are
+   required. With overlap, use weight ESS and the distribution of \\(\log B\\)
+   to decide whether raw products are statistically usable.
+4. **Choose the shortest ratio horizon justified by the integrand.** Correct
+   \\(A_t^q s_t\\) needs the prefix ratio \\(B_{1:t}\\); an arbitrary
+   response-level quantity needs \\(B_{1:T}\\). Token \\(B_t\\) is a deliberate
+   lower-variance occupancy approximation.
+5. **Classify the tail.** Keep raw IS when its ESS is adequate. Cap valid but
+   high-leverage observations with TIS. Use MIS or RS when the tail represents
+   data that should not be trusted, accepting that a hard mask changes the
+   target. A geometric or mean-\\(k_3\\) gate is a length-normalized diagnostic,
+   not change of measure.
+6. **Shape only the trainable move.** In a factorized design, apply PPO/GSPO to
+   \\(U=\pi/q\\). Use \\(E=\pi/\mu\\) directly when \\(q=\mu\\), or when total
+   endpoint mismatch is intentionally being gated despite losing attribution.
+
+This produces concrete defaults rather than a universal winner:
+
+| Operating condition | Estimator configuration | Interpretation |
+|---|---|---|
+| Fresh coupled rollout, \\(q=\mu\\) | \\(\widetilde\Psi_{\mathrm{PPO}}(E,\hat A^{\mathrm{roll}})\\) | Standard PPO/GRPO-style bypass; no separate behavior correction. |
+| Coupled rollout with anomalous responses | \\(M(S(E))\widetilde\Psi_{\mathrm{PPO}}(E,\hat A^{\mathrm{roll}})\\) | Robust pre-filter plus PPO; selection, not IS correction. |
+| Mild decoupled staleness | \\(\widetilde W_{\mathrm{tok}}(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A^{\mathrm{roll}})\\) | Practical low-variance approximation; prefix occupancy remains approximate. |
+| Heavy but credible behavior-ratio tail | \\(\widetilde W_{\mathrm{TIS}}(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A)\\) | Cap leverage while keeping samples. |
+| Suspected anomalous rollouts | \\(M(S(B))\widetilde W(B)\widetilde\Psi_{\mathrm{PPO}}(U,\hat A)\\) | Separate data admission, behavior weighting, and proximal shaping. |
+| High fidelity to the \\(q\\)-surrogate is required | \\(\widetilde W_{\mathrm{prefix/seq}}(B)\,U A^q\\) | Use the exact horizon allowed by credit and accept its variance cost. |
+| Credit mismatch dominates | Improve \\(\hat A^{q\leftarrow\mu}\\) before tuning the ratio tail | Ratio operators cannot repair a continuation-value error. |
+
+Thresholds remain empirical within a chosen configuration. At minimum, report
+weight ESS, acceptance rate, clip fraction, gradient variance, and the
+distributions of \\(\log B\\) and \\(\log U\\), all stratified by response
+length and policy age. Correlation between the gate statistic and advantage is
+especially important: rejecting high-credit samples can rotate the gradient,
+not merely reduce its scale.
+
+### 3.4 Open configurations suggested by the estimator
 
 The solution space is combinatorial: an edge choice does not determine an
 operator or geometry. Existing methods occupy only some combinations. The
@@ -969,7 +931,7 @@ These coordinates are hypotheses to test. Their value here is to make the
 unexplored design choices explicit, not to imply that more elaborate
 compositions will outperform simpler ones.
 
-### 3.3 Implications for asynchronous and piecewise rollouts
+### 3.5 Asynchronous and piecewise rollouts
 
 A resumed or interrupted trajectory may be generated by several policy
 versions. Let \\(v(t)\\) denote the version used at token \\(t\\):
@@ -978,17 +940,17 @@ versions. Let \\(v(t)\\) denote the version used at token \\(t\\):
 \[
 \mu(y\mid x)=\prod_t\mu_{v(t)}(y_t\mid h_t),\qquad
 B_t=\frac{q_t}{\mu_{v(t),t}}.
-\tag{4}
+\tag{3}
 \]
 </div>
 
-The framework treats policy version as metadata attached to the behavior edge,
+The estimator treats policy version as metadata attached to the behavior edge,
 not as a new topology. Stored per-token sampling log-probabilities support the
 observed conditional ratio, but do not correct unlogged prompt selection,
 replay selection, or resume-selection bias. Segment-aware normalization is
 therefore a geometry and normalization choice within the same solution space.
 
-### 3.4 Using the framework to analyze a method
+### 3.6 Reporting checklist for a method
 
 1. **Identify the actual behavior distribution.** Include sampling transforms,
    backend precision, and piecewise versions.
@@ -1009,39 +971,37 @@ therefore a geometry and normalization choice within the same solution space.
 
 ## 4. Limitations and conclusion {#scope}
 
-The policy triangle organizes the mitigation solution space; it does not rank
-its coordinates. It cannot choose thresholds, guarantee that masking improves
-return, repair support mismatch, or replace empirical validation. It identifies
-credit realignment as a missing module but does not supply or compare a
-general-purpose \\(A^{q\leftarrow\mu}\\) estimator; critic learning, trace
-methods, and finite-group advantage theory remain open. It also omits
-reward-model drift, environment nonstationarity, and optimizer-state staleness.
-Sequence-product importance sampling can be formally exact and statistically
-unusable, while geometric statistics can be stable without being exact
-change-of-measure factors.
+The unified estimator is a bookkeeping and decision framework, not a theorem
+that selects one configuration for every training run. It cannot choose
+thresholds without data, guarantee that masking improves return, repair support
+mismatch, or replace empirical validation. It identifies credit realignment as
+a separate slot but does not supply or compare a general-purpose
+\\(A^{q\leftarrow\mu}\\) estimator; critic learning, trace methods, and
+finite-group advantage theory remain open. Reward-model drift, environment
+nonstationarity, and optimizer-state staleness also sit outside the current
+scope.
 
-Within this scope, the behavior, proximal, and current policies provide a
-compact set of anchors. Masks select regions, detached weights change measure,
-and differentiable shapers control the update; each chooses its own geometry
-and must declare the policy under which credit is defined. Coupled bypass is
-the degenerate case \\(q=\mu\\), while a direct operator on \\(E=BU\\) with a
-distinct latent \\(q\\) is a collapsed, generally non-equivalent treatment.
-Decoupling separates exogenous rollout mismatch, proximal credit, and
-endogenous update drift.
+Within that scope, the estimator clarifies what is being traded. A statistic
+defines what mismatch is visible; a mask selects data; a detached weight
+approximates change of measure; an update shaper controls the trainable move;
+and the credit slot states which continuation policy is being evaluated.
+Sequence-product IS can be formally exact and statistically unusable, while a
+geometric gate can be stable without performing change of measure. Neither
+fact alone determines the best practical configuration.
 
-The main value is a clearer view of the whole solution space. The
-edge–operator–geometry representation separates **where mismatch is measured**,
-**what a mitigation mechanism does**, and **at what scale it acts**; the credit
-anchor states **which continuation policy the update evaluates**. Existing
-methods become recognizable approximations of a shared \\(q\\)-surrogate rather
-than a list of unrelated losses. The same coordinates also expose open regions
-that can be tested without presenting them as established improvements.
+The policy triangle remains useful only as the ratio-placement inset:
+\\(B=q/\mu\\) describes inherited data mismatch, \\(U=\pi/q\\) describes the
+trainable step, and \\(E=BU\\) collapses both. The broader unified view comes
+from the estimator, which turns PPO, IS, TIS, MIS, RS, IcePop, and KPop into
+recognizable settings of shared slots. That representation supports a
+conditional decision process—target first, dominant mismatch second, operator
+third—rather than a context-free method ranking.
 
 ### Suggested citation {#citation}
 
-    @misc{zhao2026policytriangle,
-      title  = {The Policy Triangle: A Unified View of Policy-Mismatch
-                Mitigation in LLM Reinforcement Learning},
+    @misc{zhao2026unifiedestimator,
+      title  = {A Unified Estimator View of Policy-Mismatch Mitigation
+                in LLM Reinforcement Learning},
       author = {Huaiyi Zhao},
       year   = {2026},
       url    = {https://huaiyizhao.github.io/policy-triangle/}
@@ -1050,8 +1010,8 @@ that can be tested without presenting them as established improvements.
 ## Technical appendix: derivations and exactness conditions {#appendix}
 
 This appendix contains the algebra behind the conclusion formulas in the main
-text. It is intentionally skippable: the policy-triangle framework can be read
-without it.
+text, including the complete estimator-error decomposition. It is intentionally
+skippable: the unified estimator and decision flow can be read without it.
 
 ### A.1 Exact change of measure {#appendix-a1}
 
@@ -1410,6 +1370,113 @@ Finally, after masking or truncation, one common self-normalization is
 </div>
 
 It stabilizes average gradient scale but changes the finite-sample estimand.
+
+### A.9 Error decomposition for the unified estimator {#appendix-a9}
+
+The main text uses the estimator template
+
+<div class="equation">
+\[
+\widehat g
+=
+\sum_t
+\mathbb E_\mu
+\left[
+M_t\widetilde R_t\,
+\widetilde\psi_t(U,\hat A)
+\right],
+\tag{A.24}
+\]
+</div>
+
+where the score term is included inside \\(\widetilde\psi_t\\) for compactness.
+For the unclipped \\(q\\)-surrogate, define
+
+<div class="equation">
+\[
+R_t=B_{1:t},
+\qquad
+\psi_t=U_tA_t^qs_t,
+\qquad
+g_{q,t}=\mathbb E_\mu[R_t\psi_t].
+\tag{A.25}
+\]
+</div>
+
+Adding and subtracting two intermediate estimators gives the exact telescoping
+decomposition
+
+<div class="equation">
+\[
+\begin{aligned}
+\widehat g_t-g_{q,t}
+={}&
+\underbrace{
+\mathbb E_\mu[(M_t\widetilde R_t-R_t)\psi_t]
+}_{\text{measure, geometry, and tail}}
+\\
+&+
+\underbrace{
+\mathbb E_\mu\!\left[
+M_t\widetilde R_t
+\bigl(
+\widetilde\psi_t(U,A^q)-\psi_t
+\bigr)
+\right]
+}_{\text{update shaping}}
+\\
+&+
+\underbrace{
+\mathbb E_\mu\!\left[
+M_t\widetilde R_t
+\bigl(
+\widetilde\psi_t(U,\hat A)
+-\widetilde\psi_t(U,A^q)
+\bigr)
+\right]
+}_{\text{credit / advantage}}.
+\end{aligned}
+\tag{A.26}
+\]
+</div>
+
+The first term contains several familiar cases. Token correction replaces
+\\(R_t\\) by \\(B_t\\); TIS replaces it by a capped ratio; MIS multiplies a raw
+ratio by a tail mask; pure RS may set the weight to one and therefore combines
+selection with an omitted change of measure. The second term records PPO,
+GSPO, or another nonlinear update rule. The third records reuse of rollout
+credit in place of \\(A^q\\).
+
+For an empirical batch estimator \\(\widehat g_N\\), its error relative to the
+true current-policy gradient has two additional layers:
+
+<div class="equation">
+\[
+\widehat g_N-\nabla J(\pi)
+=
+\underbrace{\widehat g_N-\mathbb E[\widehat g_N]}_{\text{finite sampling}}
++
+\underbrace{\mathbb E[\widehat g_N]-g_q(\pi)}_{\text{three terms in (A.26)}}
++
+\underbrace{g_q(\pi)-\nabla J(\pi)}_{\text{local-surrogate error}}.
+\tag{A.27}
+\]
+</div>
+
+Equation (A.26) is a bookkeeping identity once the intermediate path is fixed;
+it does not make the components statistically independent. A mask can correlate
+with advantage, and nonlinear edge placement introduces the interactions in
+Appendix A.8. Its purpose is to identify which part of the reference estimator
+an intervention changes before comparing its bias and variance.
+
+<figure class="triangle-figure">
+  <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Schematic bias-versus-variance map relative to the unclipped q-surrogate with aligned A q. Positions are qualitative and threshold-dependent.">
+  <figcaption>
+    Figure A1. A local bias–variance intuition for the measure-and-tail term in
+    (A.26), not an algorithm-selection chart. It applies only after the target,
+    credit, topology, and estimator slot have been fixed.
+  </figcaption>
+</figure>
 
 ## References {#references}
 
