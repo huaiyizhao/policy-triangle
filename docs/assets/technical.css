@@ -312,7 +312,7 @@ p { margin: 0.9rem 0 0; }
   font-weight: 650;
 }
 
-.policy-legend span::before {
+.policy-legend > span::before {
   content: "";
   display: inline-block;
   width: 0.55rem;
@@ -321,6 +321,17 @@ p { margin: 0.9rem 0 0; }
   border-radius: 50%;
   vertical-align: 0.02rem;
   background: currentColor;
+}
+
+.policy-symbol {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.08em;
+  font-weight: 700;
+}
+
+.policy-symbol sub {
+  font-size: 0.7em;
+  vertical-align: -0.22em;
 }
 
 .policy-mu { color: var(--blue); }

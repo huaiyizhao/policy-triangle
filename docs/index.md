@@ -240,9 +240,9 @@ g_{\color{#c66d0a}{q}}(\color{#19845d}{\pi_\theta})
 \]
 
 <div class="policy-legend" aria-label="Policy color legend">
-  <span class="policy-mu">\\(\mu\\) behavior / rollout</span>
-  <span class="policy-q">\\(q\\) frozen proximal anchor</span>
-  <span class="policy-pi">\\(\pi_\theta\\) current trainable policy</span>
+  <span class="policy-mu"><span class="policy-symbol">μ</span> behavior / rollout</span>
+  <span class="policy-q"><span class="policy-symbol">q</span> frozen proximal anchor</span>
+  <span class="policy-pi"><span class="policy-symbol">π<sub>θ</sub></span> current trainable policy</span>
 </div>
 
 </div>
