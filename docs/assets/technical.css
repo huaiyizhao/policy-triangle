@@ -441,6 +441,20 @@ pre {
 
 .references-list em { color: var(--muted); }
 
+#appendix {
+  margin-top: 4.5rem;
+  padding-top: 2rem;
+  border-top: 4px double var(--line-dark);
+}
+
+#appendix + p {
+  padding: 0.85rem 1rem;
+  border-left: 4px solid var(--purple);
+  background: #faf8fd;
+  color: #46515b;
+  font-size: 0.9rem;
+}
+
 .paper-footer {
   margin-top: 4rem;
   padding-top: 1.3rem;

@@ -31,7 +31,9 @@ policy, or simply assumed to be close. Mapping existing methods into these
 coordinates separates shared design choices from method-specific details and
 exposes open regions of the mitigation space. The framework is a unified view
 of approximations to a proximal-policy surrogate, not a new optimizer,
-unbiasedness result, or convergence claim.
+unbiasedness result, or convergence claim. The main text emphasizes
+interpretive conclusions; a technical appendix records the derivations and
+exactness conditions.
 
 </div>
 
@@ -45,19 +47,18 @@ policy triangle a precise target: most methods studied below are estimators or
 robust approximations of a proximal-policy surrogate, not unbiased estimators
 of the current-policy gradient at an arbitrary \\(\pi\\).
 
+In plain language, one model may write the response, a frozen snapshot may
+define what counts as a safe update, and a newer model may receive that update.
+A method called “rollout correction” can address one of these gaps without
+addressing the others. The purpose of this article is to make those roles
+visible before comparing algorithm names.
+
 ### 1.1 Exact off-policy policy gradient and its two obstacles
 
 Let \\(\mu\\) be the policy that generated a response, \\(\pi=\pi_\theta\\) the
-current policy, \\(h_t=(x,y_{\lt t})\\), and
-\\(s_t=\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\). Define
-
-<div class="equation">
-\[
-E_i=\frac{\pi(y_i\mid h_i)}{\mu(y_i\mid h_i)},
-\qquad
-E_{a:b}=\prod_{i=a}^{b}E_i.
-\]
-</div>
+current policy, and \\(h_t=(x,y_{\lt t})\\) the token context. Write
+\\(E_i=\pi(y_i\mid h_i)/\mu(y_i\mid h_i)\\) and
+\\(E_{1:t}=\prod_{i=1}^tE_i\\).
 
 Under the usual support and common-dynamics assumptions, the exact
 current-policy gradient has the change-of-measure form
@@ -69,34 +70,28 @@ current-policy gradient has the change-of-measure form
 \sum_{t=1}^{T}
 \mathbb E_{y\sim\mu}
 \left[
-E_{1:t}A_t^\pi(h_t,y_t)s_t
+E_{1:t}A_t^\pi(h_t,y_t)
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)
 \right].
 \]
 </div>
 
-Equivalently, if only a terminal return is available,
-
-<div class="equation">
-\[
-\nabla J(\pi)
-=
-\sum_{t=1}^{T}
-\mathbb E_{y\sim\mu}
-\left[
-E_{1:T}R(y)s_t
-\right].
-\]
-</div>
-
-These identities expose two different statistical obstacles. The prefix ratio
+This identity exposes two different statistical obstacles. The prefix ratio
 \\(E_{1:t}\\) corrects how the context and sampled action were reached, but its
 product can have prohibitive variance. The credit term must meanwhile be
 \\(A_t^\pi\\): the continuation after \\(y_t\\) must be evaluated under \\(\pi\\),
 not under the policy that happened to generate the recorded suffix. Full
 sequence IS performs both corrections at once, but is often statistically
-unusable for long responses. These exact formulas are therefore a benchmark
+unusable for long responses. The exact expression is therefore a benchmark
 for what is being approximated, not a default recipe for LLM training
 ([Williams, 1992](https://doi.org/10.1007/BF00992696)).
+
+> **In plain language.** Exact correction has two jobs: correct how the model
+> reached the current token, and evaluate what happens after that token under
+> the policy we actually care about. Long products make the first job noisy;
+> unavailable current-policy continuations make the second job difficult. The
+> terminal-return identity and change-of-measure details are collected in
+> [Appendix A.1](#appendix-a1).
 
 The gap is unusually visible in LLM systems because rollout and training are
 usually separate ([Sheng et al., 2024](https://arxiv.org/abs/2409.19256);
@@ -111,21 +106,10 @@ across optimizer steps adds a second source of drift
 
 ### 1.2 TRPO replaces the exact gradient with a local improvement model
 
-Let \\(q\\) be a frozen reference policy. The performance-difference identity is
-exact:
-
-<div class="equation">
-\[
-J(\pi)-J(q)
-=
-\sum_{t=1}^{T}
-\mathbb E_{h_t\sim d_t^\pi,\,y_t\sim\pi}
-\left[A_t^q(h_t,y_t)\right].
-\]
-</div>
-
-TRPO replaces the current-policy context distribution \\(d_t^\pi\\) by
-\\(d_t^q\\), producing the surrogate
+Let \\(q\\) be a frozen reference policy. Instead of correcting all the way to
+an arbitrary current policy, TRPO asks a more practical question: *what update
+looks beneficial if \\(\pi\\) stays close to \\(q\\)?* Its conclusion is the
+local surrogate
 
 <div class="equation">
 \[
@@ -143,23 +127,14 @@ U_t=\frac{\pi(y_t\mid h_t)}{q(y_t\mid h_t)}.
 </div>
 
 The reference advantage \\(A^q\\) is not an ad hoc substitution: it belongs to
-the exact performance-difference identity. The approximation is the frozen
-occupancy \\(d_t^\pi\approx d_t^q\\). Consequently,
-
-<div class="equation">
-\[
-L_q^{\mathrm{TRPO}}(q)=J(q),
-\qquad
-\left.\nabla L_q^{\mathrm{TRPO}}(\pi)\right|_{\pi=q}
-=
-\left.\nabla J(\pi)\right|_{\pi=q},
-\]
-</div>
-
-but the two gradients generally differ away from \\(q\\). TRPO controls that
-local-model error with an explicit trust-region constraint rather than trying
+the exact performance-difference identity. The approximation is to reuse the
+context distribution of \\(q\\). The surrogate and true objective agree to
+first order at \\(q\\), but their gradients generally differ away from it. TRPO
+controls that local-model error with an explicit trust-region constraint rather
+than trying
 to estimate the high-variance exact gradient everywhere
-([Schulman et al., 2015](https://arxiv.org/abs/1502.05477)).
+([Schulman et al., 2015](https://arxiv.org/abs/1502.05477)). The exact identity
+and first-order matching statement appear in [Appendix A.2](#appendix-a2).
 
 ### 1.3 PPO keeps the local surrogate and replaces the trust-region solver
 
@@ -190,6 +165,11 @@ constraint or its monotonic-improvement argument
 ([Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). Both methods
 therefore rely on keeping \\(\pi\\) sufficiently close to the reference at which
 their local model is accurate.
+
+> **In plain language.** TRPO says “optimize only inside a measured
+> neighborhood.” PPO keeps the same local picture but uses clipping as a
+> cheaper guardrail. The guardrail is useful, but it is not the original TRPO
+> guarantee.
 
 ### 1.4 Decoupled PPO exposes three approximation surfaces
 
@@ -247,28 +227,13 @@ g_{\color{#c66d0a}{q}}(\color{#19845d}{\pi_\theta})
 
 </div>
 
-If \\(A_t^q\\) is unavailable and only a return from a \\(\mu\\)-generated suffix
-is observed, then
-
-<div class="equation">
-\[
-Q_t^q(h_t,y_t)
-=
-\mathbb E_\mu
-\left[
-B_{t+1:T}R
-\mid h_t,y_t
-\right],
-\qquad
-g_q^{\mathrm{reward}}(\pi)
-=
-\sum_t\mathbb E_\mu
-\left[
-B_{1:T}U_tR\,
-\nabla_\theta\log\pi_\theta(y_t\mid h_t)
-\right].
-\]
-</div>
+Read the highlighted expression from left to right: \\(B_{1:t}\\) repairs the
+history inherited from rollout, \\(A_t^q\\) says how the sampled action should
+be credited under the proximal policy, and \\(U_t\\) controls the trainable
+step from \\(q\\) to \\(\pi\\). If only a behavior-generated terminal return is
+available, future ratios can in principle reconstruct the missing
+\\(q\\)-credit; the corresponding identity is in
+[Appendix A.3](#appendix-a3).
 
 This yields three conceptually separate design problems:
 
@@ -342,21 +307,10 @@ the same local-surrogate structure.
 ## 2. The policy triangle as a unified solution space {#framework}
 
 The policy triangle is the framework behind the unified view. Unless stated
-otherwise, the reference estimand in this section is the gradient of the
-unclipped \\(q\\)-surrogate:
-
-<div class="equation">
-\[
-g_q(\pi)
-=
-\sum_t
-\mathbb E_\mu
-\left[
-B_{1:t}U_tA_t^q
-\nabla_\theta\log\pi_\theta(y_t\mid h_t)
-\right].
-\]
-</div>
+otherwise, the reference estimand is the Decoupled-PPO \\(q\\)-surrogate
+highlighted in Section 1.4. A useful mental model is a three-stage pipeline:
+**admit or correct old data**, **assign compatible credit**, then **shape the
+new update**.
 
 A mapped method may estimate this expression exactly, approximate one of its
 factors, or deliberately replace it with a more robust masked or shaped
@@ -376,15 +330,9 @@ gradient semantics.
 ### 2.1 Policy anchors, edges, and operators
 
 For prompt \\(x\\), response \\(y=(y_1,\ldots,y_T)\\), and token context
-\\(h_t=(x,y_{\lt t})\\), define three conditional policies:
-
-<div class="equation">
-\[
-\mu_t=\mu(y_t\mid h_t),\qquad
-q_t=q(y_t\mid h_t),\qquad
-\pi_t=\pi_\theta(y_t\mid h_t).
-\]
-</div>
+\\(h_t=(x,y_{\lt t})\\), write the sampled-token probabilities as
+\\(\mu_t\\), \\(q_t\\), and \\(\pi_t\\) under the behavior, proximal, and current
+policies respectively.
 
 The corresponding token ratios are
 
@@ -471,20 +419,9 @@ it records which continuation distribution the integrand targets. A shaper may
 also be conditioned on behavior mismatch, \\(\mathrm C(U;B,\hat A)\\), while
 still acting through the trainable edge \\(U\\).
 
-On the direct edge, the clean single-ratio families are
-
-<div class="equation">
-\[
-\begin{aligned}
-\mathrm M(E)
-& &&\text{pure selection},\\
-\mathrm W(E)\quad\text{or}\quad \mathrm M(E)\mathrm W(E)
-& &&\text{detached weighting or masked IS},\\
-\mathrm C(E)\quad\text{or}\quad \mathrm M(E)\mathrm C(E)
-& &&\text{coupled shaping, optionally pre-filtered}.
-\end{aligned}
-\]
-</div>
+On the direct edge, \\(\mathrm M(E)\\) means pure selection;
+\\(\mathrm W(E)\\), optionally preceded by a mask, means detached weighting;
+and \\(\mathrm C(E)\\), again optionally pre-filtered, means coupled shaping.
 
 Using \\(\mathrm W(E)\mathrm C(E)\\), with or without \\(\mathrm M(E)\\), is
 not the default change-of-measure construction. If both \\(\mathrm W\\) and
@@ -492,24 +429,11 @@ not the default change-of-measure construction. If both \\(\mathrm W\\) and
 product reduces to \\(E^2\\); such a design requires a deliberate alternative
 interpretation rather than being counted as one correction.
 
-PPO's effective token coefficient is advantage-sign dependent:
-
-<div class="equation">
-\[
-\mathrm C^{\mathrm{PPO}}(X,\hat A)=
-X\,\mathbb{I}\!\left[
-(\hat A\ge0 \land X\le1+\epsilon_+)
-\;\lor\;
-(\hat A&lt;0 \land X\ge1-\epsilon_-)
-\right].
-\tag{2}
-\]
-</div>
-
-Here \\(\mathbb{I}[\cdot]\\) denotes an indicator: it equals one when its
-condition is true and zero otherwise. Selecting the clipped branch removes
-gradient in a particular advantage-dependent direction; this differs from
-truncating a detached importance weight. DAPO changes the sign-dependent bounds
+PPO's active gradient region depends on both the ratio and the sign of the
+advantage. Selecting the clipped branch removes gradient in one direction;
+this differs from truncating a detached importance weight, which changes a
+coefficient before differentiation. The explicit coefficient is given in
+[Appendix A.5](#appendix-a5). DAPO changes the sign-dependent bounds
 ([Yu et al., 2025](https://arxiv.org/abs/2503.14476)). GSPO is also a shaper:
 it replaces the token ratio with a length-normalized sequence-geometric ratio,
 giving \\(\mathrm C_{\mathrm{geo}}(E)\\) in a coupled topology or
@@ -540,22 +464,12 @@ B=1,\qquad U=E=\frac{\pi}{\mu},\qquad A^q=A^\mu.
 \]
 </div>
 
-The \\(q\\)-surrogate degenerates to the usual behavior-anchored surrogate,
-
-<div class="equation">
-\[
-g_\mu(\pi)
-=
-\sum_t
-\mathbb E_\mu
-\left[E_tA_t^\mu s_t\right].
-\]
-</div>
-
-This is the natural synchronous PPO case: no separate \\(\mu\to q\\) data or
-credit realignment is needed. Statistical correction and proximal control are
+The surrogate then becomes the usual behavior-anchored PPO surrogate. This is
+the natural synchronous case: no separate \\(\mu\to q\\) data or credit
+realignment is needed. Statistical correction and proximal control are
 compressed onto \\(E=U\\), avoiding a separate proximal policy at the cost of
-losing causal attribution between the two roles.
+losing causal attribution between the two roles. The reduced gradient is
+written explicitly in [Appendix A.3](#appendix-a3).
 
 **Collapsed direct treatment.** A method may instead retain a conceptual
 \\(q\\) but apply a nonlinear operator directly to \\(E=BU\\). This can be
@@ -580,56 +494,15 @@ constrain the current update on \\(U\\). A typical implementation has the form
 \\(\mathrm M(B)\mathrm W(B)\mathrm C(U;\hat A^{\mathrm{roll}})\\), with an
 identity mask when no admission filter is required.
 
-For PPO clipping, the two constructions can be written side by side. A coupled
-objective attaches the shaper to the direct edge:
+For PPO clipping, the practical difference is attachment. Coupled PPO applies
+one nonlinear shaper to the total ratio \\(E\\). Decoupled PPO first attaches a
+detached behavior coefficient to \\(B\\), then applies the differentiable PPO
+shaper only to \\(U\\), usually while reusing rollout-generated credit. Their
+unclipped token coefficients can coincide when the same credit signal is used,
+but their clipped regions do not. The side-by-side objectives and the
+unclipped identity are in [Appendix A.4](#appendix-a4).
 
-<div class="equation">
-\[
-L_{\mathrm{coupled}}
-=
-\mathbb E_{\mu}
-\left[
-\min\!\left(
-E_t\hat A_t^\mu,\,
-\operatorname{clip}(E_t,1-\epsilon,1+\epsilon)\hat A_t^\mu
-\right)
-\right].
-\]
-</div>
-
-Practical Decoupled PPO attaches a detached behavior weight to \\(B\\) and the
-differentiable PPO shaper to \\(U\\), while commonly reusing rollout-generated
-credit:
-
-<div class="equation">
-\[
-L_{\mathrm{decoupled}}^{\mathrm{tok}}
-=
-\mathbb E_{\mu}
-\left[
-\operatorname{sg}[B_t]\,
-\min\!\left(
-U_t\hat A_t^{\mathrm{roll}},\,
-\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)
-\hat A_t^{\mathrm{roll}}
-\right)
-\right].
-\]
-</div>
-
-On the unclipped branch, and only when the same credit signal is used, the
-token-wise effective score-function coefficient is the same:
-
-<div class="equation">
-\[
-\operatorname{sg}[B_t]\,U_t\hat A_t^{\mathrm{roll}}
-\nabla_\theta\log\pi_\theta
-=
-E_t\hat A_t^{\mathrm{roll}}\nabla_\theta\log\pi_\theta.
-\]
-</div>
-
-This token-wise algebra does **not** establish exactness with respect to
+That unclipped token-wise coincidence does **not** establish exactness with respect to
 \\(g_q\\): the ideal surrogate uses \\(B_{1:t}A_t^q\\), not merely
 \\(B_t\hat A_t^{\mathrm{roll}}\\). Decoupling changes where the nonlinear
 trust-region mechanism is attached—coupled PPO clips total mismatch \\(E\\),
@@ -659,6 +532,11 @@ done with its tail**. Treating these as two independent axes makes the
 terminology in the analyses of
 [Li and Liu, 2025a](https://richardli.xyz/post/rl-collapse-part2/) and
 [2025b](https://richardli.xyz/post/rl-collapse-part3/) much easier to compare.
+
+> **In plain language.** First choose the ruler: compare one token, the prefix,
+> or the whole answer. Then choose what to do with extreme readings: keep,
+> cap, mask, or reject them. “Sequence” and “TIS” are therefore not competing
+> labels; they describe different coordinates of one design.
 
 Let the behavior-edge token ratio be
 \\(r_t\equiv B_t=q(y_t\mid h_t)/\mu(y_t\mid h_t)\\). In a bypass topology, the
@@ -696,32 +574,11 @@ They do not have interchangeable semantics:
 
 </div>
 
-For sequence IS, the change-of-measure identity is
-
-<div class="equation">
-\[
-\mathbb E_{y\sim\mu}[R(y)F(y)]
-=
-\mathbb E_{y\sim q}[F(y)].
-\]
-</div>
-
 There is therefore no estimand-independent answer to whether prefix or
 sequence correction is “the” unbiased one. For an arbitrary response-level
 quantity \\(F(y)\\), the full sequence ratio is the general exact correction.
 For a causal contribution \\(f_t\\) that is measurable from \\((h_t,y_t)\\),
-future ratios integrate to one under the same support and common-dynamics
-assumptions, so
-
-<div class="equation">
-\[
-\mathbb E_\mu\!\left[R\,f_t(h_t,y_t)\right]
-=
-\mathbb E_\mu\!\left[R_{1:t}f_t(h_t,y_t)\right]
-=
-\mathbb E_q\!\left[f_t(h_t,y_t)\right].
-\]
-</div>
+future ratios integrate out under the usual assumptions.
 
 In that causal case, Prefix-IS is the minimum-horizon exact correction;
 Seq-IS remains unbiased but multiplies by unnecessary future ratios. In common
@@ -729,7 +586,8 @@ outcome-level LLM RL, however, \\(\hat A_t\\) is often computed from the
 complete response. Then \\(\phi_t\\) depends on the suffix and is not
 prefix-measurable: Prefix-IS is not generally exact unless the future return
 has already been replaced by the correct target-policy conditional value or
-corrected per-decision.
+corrected per-decision. The two change-of-measure identities and their
+measurability condition are derived in [Appendix A.6](#appendix-a6).
 
 For the \\(q\\)-surrogate, this gives a concrete compatibility rule:
 
@@ -738,8 +596,8 @@ For the \\(q\\)-surrogate, this gives a concrete compatibility rule:
 \boxed{
 B_{1:t}A_t^q
 \quad\text{or}\quad
-B_{1:t}\!\left(B_{t+1:T}R\right)
-=B_{1:T}R
+B_{1:t}\!\left(B_{t+1:T}\mathcal R\right)
+=B_{1:T}\mathcal R
 }
 \]
 </div>
@@ -807,14 +665,11 @@ of the original, unmasked \\(q\\)-surrogate or current-policy gradient. The
 geometric \\(k_3\\)-style statistic used to build \\(G\\) can be an unbiased
 estimator of a per-token KL under its stated sampling distribution, and the
 normalization makes the *acceptance criterion* length-invariant. Neither fact
-makes the masked gradient unbiased. Pure Geo-RS estimates the selected-data
-quantity \\(\mathbb E_\mu[\mathbb I(G\in\mathcal A)F]\\). Even when the same gate
-is composed with valid sequence IS, it gives
-\\(\mathbb E_\mu[\mathbb I(G\in\mathcal A)RF]
-=\mathbb E_q[\mathbb I(G\in\mathcal A)F]\\), which is unbiased only for the
-*gated* target; relative to \\(\mathbb E_q[F]\\), the rejected region is an
-omitted-tail bias. Thus Geo-RS is best described as **length-neutral
-selection**, not unbiased off-policy correction.
+makes the masked gradient unbiased. It is unbiased only for the *gated* target
+that it defines; relative to the original target, the rejected region remains
+an omitted-tail bias. Thus Geo-RS is best described as **length-neutral
+selection**, not unbiased off-policy correction. The expectation-level
+statement is in [Appendix A.7](#appendix-a7).
 
 At token scale, replace \\(R,F\\) by \\(r_t,\phi_t\\). The resulting matrix makes
 the combinations explicit:
@@ -848,17 +703,19 @@ kind of mismatch remains:
 3. **Token-IS:** much lower variance under bounded per-token terms, but prefix
    or occupancy bias remains even before any truncation is applied.
 4. **TIS:** caps tail influence and usually lowers variance, while adding
-   \\(\mathbb E_\mu[(\min(R,C)-R)F]\\) truncation bias. Seq-TIS broadcasts one
-   capped response weight to every token; Token-TIS adds truncation bias on top
-   of the token approximation.
+   truncation bias. Seq-TIS broadcasts one capped response weight to every
+   token; Token-TIS adds truncation bias on top of the token approximation.
 5. **MIS:** bounds the accepted IS weight and removes suspected bad-tail data,
-   but sacrifices sample efficiency. For Seq-MIS its bias is exactly the omitted
-   target-tail contribution, \\(-\mathbb E_q[F\mathbb{I}[R>C]]\\).
+   but sacrifices sample efficiency. For Seq-MIS the bias is exactly the
+   omitted target-tail contribution.
 6. **RS:** can reject on a more robust or length-normalized statistic, but is a
    selection mechanism rather than off-policy correction. Geo-RS avoids a raw
    product threshold's length scale, yet can miss localized token outliers or
    cancellation; it is often paired with Token-TIS to obtain a sequence gate
    plus local weights.
+
+The exact TIS and MIS bias terms are recorded in
+[Appendix A.7](#appendix-a7).
 
 <figure class="triangle-figure">
   <img src="{{ '/assets/bias-variance-tradeoff.svg' | relative_url }}" alt="Two-panel bias-variance diagram. The first panel shows that variance exposure typically increases from token to prefix to sequence correction: prefix IS is the minimum exact horizon for a prefix-measurable causal term, while sequence IS is required for an arbitrary response-level term. The second panel shows raw IS retaining the most tail variance with no operator-induced bias, TIS capping the tail, MIS deleting it, and pure rejection sampling as selection rather than change of measure.">
@@ -891,7 +748,7 @@ explicit composition:
 \nabla_\theta\log\pi_\theta(y_i\mid h_i),
 \qquad
 \alpha\in\{\mathrm{roll},\mu,q,\pi\}.
-\tag{3}
+\tag{2}
 \]
 </div>
 
@@ -914,22 +771,16 @@ recomputed, and which bias–variance trade-off it introduces.
 \operatorname{clip}(E)\ne
 \operatorname{clip}(B)\operatorname{clip}(U),\qquad
 \mathrm M(E)\ne\mathrm M(B)\mathrm M(U).
-\tag{4}
+\tag{3}
 \]
 </div>
 
 For \\(k_3(x)=x-1-\log x\\),
-
-<div class="equation">
-\[
-k_3(BU)=k_3(B)+k_3(U)+(B-1)(U-1).
-\tag{5}
-\]
-</div>
-
-Therefore, filtering total mismatch is not equivalent to filtering the behavior
-and update edges independently. A mask may nevertheless read any edge without
-forcing a downstream importance weight to consume the same edge.
+the direct statistic also contains a cross-edge interaction term. Therefore,
+filtering total mismatch is not equivalent to filtering the behavior and
+update edges independently. A mask may nevertheless read any edge without
+forcing a downstream importance weight to consume the same edge. The
+interaction identity is in [Appendix A.8](#appendix-a8).
 
 #### Credit correction does not always commute with the operators
 
@@ -937,18 +788,7 @@ The credit anchor is a separate design coordinate, but it is not a black-box
 module that can always be inserted before or after the other operators. PPO
 clipping selects a branch using the sign of \\(\hat A\\); suffix truncation
 changes the conditional return being estimated; and a trajectory-dependent
-mask can destroy the usual baseline cancellation:
-
-<div class="equation">
-\[
-\mathbb E_\mu
-\left[
-M(y)\,B_{1:t}U_t\,b(h_t)\,s_t
-\right]
-\ne 0
-\qquad\text{in general}.
-\]
-</div>
+mask can destroy the usual baseline cancellation.
 
 The same issue is stronger for GRPO-style group centering and standardization,
 because rejecting one response can change the credit assigned to the others.
@@ -956,24 +796,17 @@ Thus a method may classify credit realignment separately, but its masked,
 clipped, or group-normalized objective must still be derived jointly. TRM, for
 example, notes that its reward-form and advantage-form masked objectives
 coincide only when the mask is identically one
-([Li et al., 2025](https://arxiv.org/html/2512.23075v5#A7)).
+([Li et al., 2025](https://arxiv.org/html/2512.23075v5#A7)). The formal
+non-cancellation statement is in [Appendix A.8](#appendix-a8).
 
 #### Normalization after truncation
 
 After an IS geometry and truncation rule have been chosen, self-normalization
-is an orthogonal variance-control decision:
-
-<div class="equation">
-\[
-\overline w_i=
-\frac{\widetilde w_i}
-{\sum_j M_j\widetilde w_j/\sum_jM_j}.
-\tag{6}
-\]
-</div>
-
-Its domain—token, sequence, prompt group, or batch—is part of the algorithm. It
-stabilizes mean gradient scale but is biased at finite sample size
+is an orthogonal variance-control decision. It rescales accepted weights to
+keep their average near one. Its domain—token, sequence, prompt group, or
+batch—is part of the algorithm. The precise formula is given in
+[Appendix A.8](#appendix-a8). It stabilizes mean gradient scale but is biased
+at finite sample size
 ([Owen, 2013](https://artowen.su.domains/mc/)).
 
 #### A bookkeeping sanity check
@@ -1151,7 +984,7 @@ versions. Let \\(v(t)\\) denote the version used at token \\(t\\):
 \[
 \mu(y\mid x)=\prod_t\mu_{v(t)}(y_t\mid h_t),\qquad
 B_t=\frac{q_t}{\mu_{v(t),t}}.
-\tag{7}
+\tag{4}
 \]
 </div>
 
@@ -1219,6 +1052,370 @@ that can be tested without presenting them as established improvements.
       year   = {2026},
       url    = {https://huaiyizhao.github.io/policy-triangle/}
     }
+
+## Technical appendix: derivations and exactness conditions {#appendix}
+
+This appendix contains the algebra behind the conclusion formulas in the main
+text. It is intentionally skippable: the policy-triangle framework can be read
+without it.
+
+### A.1 Exact change of measure {#appendix-a1}
+
+Define \\(s_t=\nabla_\theta\log\pi_\theta(y_t\mid h_t)\\), together with
+
+<div class="equation">
+\[
+E_i=\frac{\pi(y_i\mid h_i)}{\mu(y_i\mid h_i)},
+\qquad
+E_{a:b}=\prod_{i=a}^{b}E_i.
+\tag{A.1}
+\]
+</div>
+
+Under support and common-dynamics assumptions, changing the prefix measure from
+\\(\mu\\) to \\(\pi\\) gives
+
+<div class="equation">
+\[
+\nabla J(\pi)
+=
+\sum_t\mathbb E_\mu
+\left[
+E_{1:t}A_t^\pi(h_t,y_t)
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)
+\right].
+\tag{A.2}
+\]
+</div>
+
+If the integrand uses a sampled terminal return rather than the
+current-policy conditional advantage, the future measure must also be changed.
+Writing the terminal return as \\(\mathcal R(y)\\),
+
+<div class="equation">
+\[
+\nabla J(\pi)
+=
+\sum_t\mathbb E_\mu
+\left[
+E_{1:T}\mathcal R(y)
+\nabla_\theta\log\pi_\theta(y_t\mid h_t)
+\right].
+\tag{A.3}
+\]
+</div>
+
+Equation (A.2) exposes past occupancy correction and current-policy credit
+separately; Equation (A.3) lets the full sequence ratio perform both jobs.
+
+### A.2 From the performance-difference identity to TRPO {#appendix-a2}
+
+For a frozen reference policy \\(q\\), the performance-difference identity is
+
+<div class="equation">
+\[
+J(\pi)-J(q)
+=
+\sum_t
+\mathbb E_{h_t\sim d_t^\pi,\,y_t\sim\pi}
+\left[A_t^q(h_t,y_t)\right].
+\tag{A.4}
+\]
+</div>
+
+Replacing the current occupancy \\(d_t^\pi\\) with the frozen occupancy
+\\(d_t^q\\) yields the TRPO local surrogate shown in the main text. The
+replacement is locally consistent because
+
+<div class="equation">
+\[
+L_q^{\mathrm{TRPO}}(q)=J(q),
+\qquad
+\left.\nabla L_q^{\mathrm{TRPO}}(\pi)\right|_{\pi=q}
+=
+\left.\nabla J(\pi)\right|_{\pi=q}.
+\tag{A.5}
+\]
+</div>
+
+The equality is first-order and local; it does not imply equal gradients after
+\\(\pi\\) has moved far from \\(q\\).
+
+### A.3 The three-policy factorization {#appendix-a3}
+
+At each sampled token,
+
+<div class="equation">
+\[
+\frac{\pi_t}{\mu_t}
+=
+\underbrace{\frac{q_t}{\mu_t}}_{B_t}
+\cdot
+\underbrace{\frac{\pi_t}{q_t}}_{U_t}.
+\tag{A.6}
+\]
+</div>
+
+Changing the history and sampled-action measure from \\(\mu\\) to \\(q\\)
+therefore gives
+
+<div class="equation">
+\[
+\mathbb E_{h_t\sim d_t^q,\,y_t\sim q}
+\left[
+U_tA_t^q s_t
+\right]
+=
+\mathbb E_{y\sim\mu}
+\left[
+B_{1:t}U_tA_t^q s_t
+\right].
+\tag{A.7}
+\]
+</div>
+
+If only a return from the behavior-generated suffix is observed, the missing
+\\(q\\)-continuation can be expressed as
+
+<div class="equation">
+\[
+Q_t^q(h_t,y_t)
+=
+\mathbb E_\mu
+\left[
+B_{t+1:T}\mathcal R
+\mid h_t,y_t
+\right],
+\qquad
+g_q^{\mathrm{reward}}(\pi)
+=
+\sum_t\mathbb E_\mu
+\left[
+B_{1:T}U_t\mathcal R\,s_t
+\right].
+\tag{A.8}
+\]
+</div>
+
+In coupled bypass, \\(q=\mu\\), so \\(B=1\\), \\(U=E\\), and the same expression
+reduces to
+
+<div class="equation">
+\[
+g_\mu(\pi)
+=
+\sum_t\mathbb E_\mu
+\left[E_tA_t^\mu s_t\right].
+\tag{A.9}
+\]
+</div>
+
+### A.4 Coupled and decoupled PPO objectives {#appendix-a4}
+
+Coupled PPO attaches its nonlinear shaper to the direct ratio:
+
+<div class="equation">
+\[
+L_{\mathrm{coupled}}
+=
+\mathbb E_\mu
+\left[
+\min\!\left(
+E_t\hat A_t^\mu,\,
+\operatorname{clip}(E_t,1-\epsilon,1+\epsilon)\hat A_t^\mu
+\right)
+\right].
+\tag{A.10}
+\]
+</div>
+
+Practical token-level Decoupled PPO instead separates a detached behavior
+coefficient and a trainable update shaper:
+
+<div class="equation">
+\[
+L_{\mathrm{decoupled}}^{\mathrm{tok}}
+=
+\mathbb E_\mu
+\left[
+\operatorname{sg}[B_t]\,
+\min\!\left(
+U_t\hat A_t^{\mathrm{roll}},\,
+\operatorname{clip}(U_t,1-\epsilon,1+\epsilon)
+\hat A_t^{\mathrm{roll}}
+\right)
+\right].
+\tag{A.11}
+\]
+</div>
+
+When clipping is inactive and the same credit signal is used,
+
+<div class="equation">
+\[
+\operatorname{sg}[B_t]U_t\hat A_t^{\mathrm{roll}}
+\nabla_\theta\log\pi_\theta
+=
+E_t\hat A_t^{\mathrm{roll}}\nabla_\theta\log\pi_\theta.
+\tag{A.12}
+\]
+</div>
+
+This token identity does not recover the ideal prefix factor
+\\(B_{1:t}A_t^q\\); it only explains why the two unclipped token coefficients
+can look identical.
+
+### A.5 PPO's advantage-dependent active region {#appendix-a5}
+
+Ignoring boundary points, the effective PPO token coefficient can be written
+
+<div class="equation">
+\[
+\mathrm C^{\mathrm{PPO}}(X,\hat A)=
+X\,\mathbb I\!\left[
+(\hat A\ge0 \land X\le1+\epsilon_+)
+\;\lor\;
+(\hat A&lt;0 \land X\ge1-\epsilon_-)
+\right].
+\tag{A.13}
+\]
+</div>
+
+The indicator describes whether gradient flows through the unclipped branch.
+Because the condition depends on the sign of \\(\hat A\\), PPO clipping is a
+differentiable, direction-dependent shaper rather than detached TIS.
+
+### A.6 When prefix and sequence IS are exact {#appendix-a6}
+
+For an arbitrary response-level integrand \\(F(y)\\), raw sequence IS satisfies
+
+<div class="equation">
+\[
+\mathbb E_{y\sim\mu}[R(y)F(y)]
+=
+\mathbb E_{y\sim q}[F(y)],
+\qquad
+R=\prod_{t=1}^T\frac{q_t}{\mu_t}.
+\tag{A.14}
+\]
+</div>
+
+If \\(f_t\\) is measurable from \\((h_t,y_t)\\), future ratios integrate to one:
+
+<div class="equation">
+\[
+\mathbb E_\mu\!\left[Rf_t(h_t,y_t)\right]
+=
+\mathbb E_\mu\!\left[R_{1:t}f_t(h_t,y_t)\right]
+=
+\mathbb E_q\!\left[f_t(h_t,y_t)\right].
+\tag{A.15}
+\]
+</div>
+
+When a sampled advantage depends on the suffix, it is not such an \\(f_t\\).
+Exactness can instead be recovered by explicitly aligning the credit:
+
+<div class="equation">
+\[
+B_{1:t}A_t^q
+\qquad\text{or}\qquad
+B_{1:t}\!\left(B_{t+1:T}\mathcal R\right)=B_{1:T}\mathcal R.
+\tag{A.16}
+\]
+</div>
+
+### A.7 Tail operators and their bias {#appendix-a7}
+
+For TIS with upper cap \\(C\\), the operator-induced bias relative to raw
+sequence IS is
+
+<div class="equation">
+\[
+\operatorname{Bias}_{\mathrm{TIS}}
+=
+\mathbb E_\mu\!\left[(\min(R,C)-R)F\right].
+\tag{A.17}
+\]
+</div>
+
+For one-sided Seq-MIS,
+
+<div class="equation">
+\[
+\operatorname{Bias}_{\mathrm{MIS}}
+=
+-\mathbb E_q\!\left[F\,\mathbb I(R>C)\right].
+\tag{A.18}
+\]
+</div>
+
+Let a geometric gate accept when \\(G\in\mathcal A\\). Pure Geo-RS is a
+selected-data objective rather than a density-ratio estimator. Even after
+adding valid sequence IS,
+
+<div class="equation">
+\[
+\mathbb E_\mu\!\left[\mathbb I(G\in\mathcal A)RF\right]
+=
+\mathbb E_q\!\left[\mathbb I(G\in\mathcal A)F\right].
+\tag{A.19}
+\]
+</div>
+
+Its bias relative to the unmasked target is therefore
+
+<div class="equation">
+\[
+-\mathbb E_q\!\left[
+F\,\mathbb I(G\notin\mathcal A)
+\right].
+\tag{A.20}
+\]
+</div>
+
+Length normalization changes the geometry of the gate; it does not remove this
+omitted-region term.
+
+### A.8 Composition, baselines, and normalization {#appendix-a8}
+
+Nonlinear edge placement introduces interactions. For the sampled
+\\(k_3(x)=x-1-\log x\\) statistic,
+
+<div class="equation">
+\[
+k_3(BU)=k_3(B)+k_3(U)+(B-1)(U-1).
+\tag{A.21}
+\]
+</div>
+
+A trajectory-dependent mask can also invalidate ordinary baseline
+cancellation:
+
+<div class="equation">
+\[
+\mathbb E_\mu
+\left[
+M(y)B_{1:t}U_t\,b(h_t)s_t
+\right]
+\ne0
+\qquad\text{in general}.
+\tag{A.22}
+\]
+</div>
+
+Finally, after masking or truncation, one common self-normalization is
+
+<div class="equation">
+\[
+\overline w_i=
+\frac{\widetilde w_i}
+{\sum_jM_j\widetilde w_j/\sum_jM_j}.
+\tag{A.23}
+\]
+</div>
+
+It stabilizes average gradient scale but changes the finite-sample estimand.
 
 ## References {#references}
 
