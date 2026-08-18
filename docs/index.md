@@ -658,18 +658,11 @@ Thus Seq-MIS, \\(\mathbb{I}[R\le C]RF\\), is one particular composition; it is
 not a synonym for every sequence-level rejection rule. The pure geometric rule
 called Geo-Mask in Li and Liu's Part 3, and Geo-RS in veRL, instead has the form
 \\(\mathbb{I}[C_{\rm low}\le G\le C_{\rm high}]F\\). It performs selection but
-no change of measure.
-
-**Unbiasedness status (August 2026).** Geo-RS is **not** an unbiased estimator
-of the original, unmasked \\(q\\)-surrogate or current-policy gradient. The
-geometric \\(k_3\\)-style statistic used to build \\(G\\) can be an unbiased
-estimator of a per-token KL under its stated sampling distribution, and the
-normalization makes the *acceptance criterion* length-invariant. Neither fact
-makes the masked gradient unbiased. It is unbiased only for the *gated* target
-that it defines; relative to the original target, the rejected region remains
-an omitted-tail bias. Thus Geo-RS is best described as **length-neutral
-selection**, not unbiased off-policy correction. The expectation-level
-statement is in [Appendix A.7](#appendix-a7).
+no change of measure. Its geometric \\(k_3\\)-style statistic can estimate a
+per-token KL, and the normalization makes the acceptance criterion
+length-invariant; the gate nevertheless changes the target by omitting the
+rejected region. Geo-RS is therefore best read as length-normalized selection.
+The expectation-level statement is in [Appendix A.7](#appendix-a7).
 
 At token scale, replace \\(R,F\\) by \\(r_t,\phi_t\\). The resulting matrix makes
 the combinations explicit:
